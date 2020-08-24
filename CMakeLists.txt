@@ -9,8 +9,9 @@ add_executable(artery_vision src/main.cpp)
 
 add_library(zhangsuen STATIC src/libzhangsuen/zhangsuen.cpp)
 include_directories(${OpenCV_INCLUDE_DIRS})
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
+
 
 include_directories(include)
-find_library(LIBZHANGSUEN libzhangsuen REQUIRED)
-target_link_libraries(${PROJECT_NAME} ${LIBZHANGSUEN})
+set(CMAKE_FIND_DEBUG_MODE TRUE)
+find_library(LIBZHANGSUEN zhangsuen lib REQUIRED)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS}  ${LIBZHANGSUEN})
