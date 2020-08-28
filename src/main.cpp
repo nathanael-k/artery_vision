@@ -1,6 +1,7 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/core/utility.hpp"
+#include "opencv2/ximgproc.hpp"
 
 #include "zhangsuen.h"
 
@@ -125,7 +126,10 @@ void Skeletonize( int, void* )
     }
 
     if (b_thin) {
-        thin(target, smooth, acute_angle, destair);
+        //thin(target, smooth, acute_angle, destair); //about 2fps at 1k resolution
+        cv::bitwise_not(source, target);
+        cv::ximgproc::thinning(target, source, cv::ximgproc::THINNING_GUOHALL); //about 6 fps at 1k resolution
+        cv::bitwise_not(source, target);
     }
 
     imshow( "Skeleton Demo", target );
@@ -137,15 +141,15 @@ void Skeletonize( int, void* )
     //Find endpoints: only one pixel in their 8 neighbourhood
     source = target.clone();
     cv::Mat endpoints = cv::Mat::zeros(src.cols, src.rows, src.type());
-    std::cout << source.type();
+
     for (int i = 0; i<3; i++) {
         for (int j = 0; j<3; j++) {
-                cv::Mat start = source.clone();
-                cv::Mat kernel = (cv::Mat_<int>(3, 3) <<  1, 1, 1, 1,-1, 1, 1, 1, 1);
+            cv::Mat start = source.clone();
+            cv::Mat kernel = (cv::Mat_<int>(3, 3) <<  1, 1, 1, 1,-1, 1, 1, 1, 1);
 
-                kernel.at<int>(i,j)= -1;
-                cv::morphologyEx(start, target, cv::MORPH_HITMISS, kernel);
-                endpoints = endpoints | target;
+            kernel.at<int>(i,j)= -1;
+            cv::morphologyEx(start, target, cv::MORPH_HITMISS, kernel);
+            endpoints = endpoints | target;
         }
 
     }
@@ -155,13 +159,62 @@ void Skeletonize( int, void* )
                                              cv::Size( 11, 11 ),
                                              cv::Point( 5, 5 ) );
     cv::morphologyEx(endpoints, endpoints_visual, cv::MORPH_DILATE, element);
-    imshow( "Endpoint Demo", endpoints_visual );
-    cv::displayStatusBar("Endpoint Demo", type2str(src.type()));
+
 
     // build graph
     // find first endpoint, this will be our first node
+    // find on top edge / first row
+    // opencv is strange: _x denotes the column in this case, unlike when accessing a matrix
+    cv::Point start(0,0);
+    for (int i = 0; i<endpoints.cols; i++) {
+        if (endpoints.at<uchar>(0,i)>0) {
+            start.x = i;
+            break;
+        }
+    }
+    assert(endpoints.at<uchar>(start) > 0);
 
+    //draw entry point for better visualisation
+    endpoints_visual.at<uchar>(start) = 100;
+
+    // unfortunately, we get some artifacts along the border,
+    // so lets find the first pixel on the path away from the border
+    for (int i = start.x; i < endpoints.cols; i++) {
+        if (source.at<uchar>(1, i) == 0) {
+            start.x = i;
+            start.y = 1;
+            break;
+        }
+        else {
+            endpoints_visual.at<uchar>(1, i) = 123;
+        }
+    }
+    assert(start.y == 1);
+
+    endpoints_visual.at<uchar>(start) = 101;
+
+
+    cv::Point posit = start;
+    posit.y++;
     // from that endpoint look in vicinity and continue on the path, creating a path_node every n pixels
+    // first just visualize the process!
+    for (;posit.y < source.rows; posit.y++) {
+        if (source.at<uchar>(posit.y, posit.x-1) == 0)
+            posit.x--;
+        else if (source.at<uchar>(posit) == 0)
+            ;
+        else if (source.at<uchar>(posit.y, posit.x+1) == 0)
+            posit.x ++;
+        else {
+            // this should never happen!!!
+            //assert(false);
+        }
+        endpoints_visual.at<uchar> (posit) = 200;
+    }
+
+    imshow( "Endpoint Demo", endpoints_visual );
+    cv::displayStatusBar("Endpoint Demo", std::to_string(start.y));
+    cv::waitKey(0);
 
     // until you hit something with more than two connections -> a junction -> a new node
     // iteratively proceed on both directions until you are at an endpoint
