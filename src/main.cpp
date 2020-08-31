@@ -207,7 +207,7 @@ void Skeletonize( int, void* )
             posit.x ++;
         else {
             // this should never happen!!!
-            //assert(false);
+            // assert(false);
         }
         endpoints_visual.at<uchar> (posit) = 200;
     }
