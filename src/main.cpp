@@ -8,6 +8,8 @@
 #include <iostream>
 #include <chrono>
 
+#include <camera.h>
+
 cv::Mat src, source, target;
 
 int erosion_elem = 0;
@@ -63,17 +65,36 @@ std::string type2str(int type) {
 
 void callBackBtn (int i, void* a) {
     button* where{ static_cast<button*>(a)};
-    if (*where == button::dilate)            dilate = i;
+    if (*where == button::dilate)           dilate = i;
     if (*where == button::smooth)           smooth = i;
     if (*where == button::acute_angle)      acute_angle = i;
     if (*where == button::destair)          destair = i;
-    if (*where == button::thin)          b_thin = i;
-    if (*where == button::threshold)          b_threshold = i;
+    if (*where == button::thin)             b_thin = i;
+    if (*where == button::threshold)        b_threshold = i;
     if (enable_update) Skeletonize(0,0);
 };
 
+static void onMouse(int event, int x, int y, void*) {
+    if (event != cv::EVENT_LBUTTONDOWN)
+        return;
+
+
+
+
+
+
+    // unregister mouse callback
+
+}
+
 int main( int argc, char** argv )
 {
+    Camera bing = Camera();
+    bing.name = "hans";
+
+    std::cout << bing.name << std::endl;
+
+    // ingest source images
     cv::CommandLineParser parser( argc, argv, "{@input | LinuxLogo.jpg | input image}" );
     src = imread( parser.get<std::string>( "@input" ) , cv::IMREAD_GRAYSCALE );
 
@@ -83,6 +104,8 @@ int main( int argc, char** argv )
         std::cout << "Usage: " << argv[0] << " <Input image>" << std::endl;
         return -1;
     }
+
+    // create windows
 
     cv::namedWindow( "Source", cv::WINDOW_AUTOSIZE);
     cv::namedWindow( "Skeleton Demo", cv::WINDOW_AUTOSIZE);
@@ -101,7 +124,16 @@ int main( int argc, char** argv )
     cv::createButton("Threshold", callBackBtn, &choices[5], cv::QT_CHECKBOX, b_threshold);
     imshow( "Source", src );
     enable_update = true;
+
+    // process source image to skeleton
     Skeletonize(0, 0);
+
+    // input starting location to process (will be the position of catheter tip later on)
+    // register mouse callback
+
+    // build up graph from that starting point
+
+
 
     cv::waitKey(0);
     return 0;
@@ -160,6 +192,9 @@ void Skeletonize( int, void* )
                                              cv::Point( 5, 5 ) );
     cv::morphologyEx(endpoints, endpoints_visual, cv::MORPH_DILATE, element);
 
+    // the following code was a first (unfinished) implementation to track the graph along its lines
+
+    /*
 
     // build graph
     // find first endpoint, this will be our first node
@@ -220,4 +255,5 @@ void Skeletonize( int, void* )
     // iteratively proceed on both directions until you are at an endpoint
 
     // whenever you cant progress, check if it is actually an endpoint as decided earlier
+    */
 }
