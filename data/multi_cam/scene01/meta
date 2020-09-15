@@ -1,6 +1,7 @@
 2 cameras
 
-cam 0
+cam
+0
 front
 -5.7565
 134.4
@@ -15,7 +16,8 @@ front
 36
 1024
 
-cam 1
+cam
+1
 left
 130.31
 0

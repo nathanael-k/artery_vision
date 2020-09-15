@@ -67,51 +67,50 @@ public:
             exit(1);
         }
 
-        while (!inFile.eof()) {
-            while (textBuffer != "cam") {
-                inFile >> textBuffer;
-            }
-            int i;
-            inFile >> i;
-            if (i == index) {
-                inFile >> name;
+        for (std::string line; std::getline(inFile, line);) {
+            if (line == "cam") {
+                int i;
+                inFile >> i;
+                if (i == index) {
+                    inFile >> name;
 
-                inFile >> origin.x();
-                inFile >> origin.y();
-                inFile >> origin.z();
+                    inFile >> origin.x();
+                    inFile >> origin.y();
+                    inFile >> origin.z();
 
-                inFile >> direction.x();
-                inFile >> direction.y();
-                inFile >> direction.z();
-                direction.normalize();
+                    inFile >> direction.x();
+                    inFile >> direction.y();
+                    inFile >> direction.z();
+                    direction.normalize();
 
-                inFile >> cameraUp.x();
-                inFile >> cameraUp.y();
-                inFile >> cameraUp.z();
-                cameraUp.normalize();
+                    inFile >> cameraUp.x();
+                    inFile >> cameraUp.y();
+                    inFile >> cameraUp.z();
+                    cameraUp.normalize();
 
-                // direction and cameraUp must be orthogonal to each other
-                assert(cameraUp.cross(direction).norm() > 0.9999);
+                    // direction and cameraUp must be orthogonal to each other
+                    assert(cameraUp.cross(direction).norm() > 0.9999);
 
-                inFile >> focalLength;
-                inFile >> sensorSize;
-                inFile >> resolution;
+                    inFile >> focalLength;
+                    inFile >> sensorSize;
+                    inFile >> resolution;
 
-                // convert mm to m
-                focalLength /= 1000;
-                sensorSize /= 1000;
+                    // convert mm to m
+                    focalLength /= 1000;
+                    sensorSize /= 1000;
 
-                assert(focalLength > 0 && sensorSize > 0 && resolution > 0);
+                    assert(focalLength > 0 && sensorSize > 0 && resolution > 0);
 
-                // orthogonal system
-                cameraLeft = -direction.cross(cameraUp);
+                    // orthogonal system
+                    cameraLeft = -direction.cross(cameraUp);
 
-                // correct, if all directions are unit length
-                pixelDistance = (sensorSize / resolution) * focalLength;
+                    // correct, if all directions are unit length
+                    pixelDistance = (sensorSize / resolution) * focalLength;
 
-                topLeftDirection = direction + (cameraUp + cameraLeft) * pixelDistance * (resolution / 2);
+                    topLeftDirection = direction + (cameraUp + cameraLeft) * pixelDistance * (resolution / 2);
 
-                return;
+                    return;
+                }
             }
         }
 

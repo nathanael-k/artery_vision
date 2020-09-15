@@ -10,24 +10,22 @@
 
 #include <camera.h>
 
-cv::Mat src, source, target;
-
 int erosion_elem = 0;
 int erosion_size = 0;
 int dilation_elem = 0;
 int dilation_size = 4;
-int threshold = 218;
+int threshold = 155;
 int const max_elem = 2;
 int const max_kernel_size = 21;
 int const max_threshold = 255;
 
-bool enable_update=false;
-bool b_thin=true;
-bool b_threshold=true;
-bool dilate=true;
-bool smooth=true;
-bool acute_angle=true;
-bool destair=true;
+bool enable_update  =false;
+bool b_thin         =true;
+bool b_threshold    =true;
+bool dilate         =true;
+bool smooth         =true;
+bool acute_angle    =true;
+bool destair        =true;
 
 enum class button {
     dilate,
@@ -87,65 +85,77 @@ static void onMouse(int event, int x, int y, void*) {
 
 }
 
+struct imageData {
+    cv::Mat source, skeleton, visualisation, buffer;
+};
+
+imageData data1, data2;
+
 int main( int argc, char** argv )
 {
-    Camera bing = Camera();
-    bing.name = "hans";
+    // folder
+    std::string folder = "../data/multi_cam/scene01/";
 
-    std::cout << bing.name << std::endl;
+    Camera cam1 = Camera(folder + "meta", 0);
+    Camera cam2 = Camera(folder + "meta", 1);
 
     // ingest source images
-    cv::CommandLineParser parser( argc, argv, "{@input | LinuxLogo.jpg | input image}" );
-    src = imread( parser.get<std::string>( "@input" ) , cv::IMREAD_GRAYSCALE );
+    data1.source = imread( folder + cam1.name + ".png", cv::IMREAD_GRAYSCALE );
+    data2.source = imread( folder + cam2.name + ".png", cv::IMREAD_GRAYSCALE );
 
-    if( src.empty() )
+    if( data1.source.empty() ||  data2.source.empty())
     {
         std::cout << "Could not open or find the image!\n" << std::endl;
-        std::cout << "Usage: " << argv[0] << " <Input image>" << std::endl;
         return -1;
     }
 
     // create windows
 
-    cv::namedWindow( "Source", cv::WINDOW_AUTOSIZE);
-    cv::namedWindow( "Skeleton Demo", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow( "Cam1 Source", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow( "Cam2 Source", cv::WINDOW_AUTOSIZE);
+
+    cv::namedWindow( "Skeleton 1", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow( "Skeleton 2", cv::WINDOW_AUTOSIZE);
+
     cv::namedWindow( "Endpoint Demo", cv::WINDOW_AUTOSIZE);
 
-    cv::createTrackbar( "Threshold:", "Skeleton Demo", &threshold, max_threshold, Skeletonize);
-    cv::createTrackbar( "Kernel size:\n 2n +1", "Skeleton Demo",
+    cv::createTrackbar( "Threshold:", "Skeleton 1", &threshold, max_threshold, Skeletonize);
+    cv::createTrackbar( "Kernel size:\n 2n +1", "Skeleton 1",
                         &dilation_size, max_kernel_size,
                         Skeletonize );
     button choices[6] = {button::dilate, button::smooth, button::acute_angle, button::destair, button::thin, button::threshold};
     cv::createButton( "Dilate at beginning", callBackBtn, &choices[0], cv::QT_CHECKBOX, dilate);
-    cv::createButton( "Boundary Smoothing", callBackBtn, &choices[1], cv::QT_CHECKBOX, smooth);
-    cv::createButton( "Acute Angle Emphasis", callBackBtn, &choices[2], cv::QT_CHECKBOX, acute_angle);
-    cv::createButton( "Destair", callBackBtn, &choices[3], cv::QT_CHECKBOX, destair);
     cv::createButton("Thin", callBackBtn, &choices[4], cv::QT_CHECKBOX, b_thin);
     cv::createButton("Threshold", callBackBtn, &choices[5], cv::QT_CHECKBOX, b_threshold);
-    imshow( "Source", src );
+    cv::createButton("Smooth", callBackBtn, &choices[2], cv::QT_CHECKBOX, smooth);
+
+    imshow( "Cam1 Source", data1.source);
+    imshow( "Cam2 Source", data2.source );
     enable_update = true;
 
-    // process source image to skeleton
+    // process source images to skeleton
     Skeletonize(0, 0);
 
     // input starting location to process (will be the position of catheter tip later on)
     // register mouse callback
 
     // build up graph from that starting point
-
-
-
     cv::waitKey(0);
     return 0;
 }
 
-void Skeletonize( int, void* )
-{
-    auto t1 = std::chrono::high_resolution_clock::now();
-    source = src;
+void Skeletonize( imageData& data ) {
+
+    data.source.copyTo(data.skeleton);
+
+    // blur
+    if (smooth) {
+        cv::GaussianBlur(data.skeleton, data.skeleton, cv::Size(11,11), 0);
+    }
+
+
     if (b_threshold) {
-        cv::threshold(source, target, threshold, max_threshold, cv::ThresholdTypes::THRESH_BINARY);
-        source = target;
+        cv::threshold(data.skeleton, data.skeleton, threshold, max_threshold, cv::ThresholdTypes::THRESH_BINARY);
     }
 
     if (dilate) {
@@ -153,22 +163,33 @@ void Skeletonize( int, void* )
                                                 cv::Size(2 * dilation_size + 1, 2 * dilation_size + 1),
                                                 cv::Point(dilation_size, dilation_size));
 
-        cv::dilate(source, target, element);
-        source = target;
+        cv::dilate(data.skeleton, data.skeleton, element);
     }
 
     if (b_thin) {
         //thin(target, smooth, acute_angle, destair); //about 2fps at 1k resolution
-        cv::bitwise_not(source, target);
-        cv::ximgproc::thinning(target, source, cv::ximgproc::THINNING_GUOHALL); //about 6 fps at 1k resolution
-        cv::bitwise_not(source, target);
+        cv::bitwise_not(data.skeleton, data.skeleton);
+        cv::ximgproc::thinning(data.skeleton, data.skeleton, cv::ximgproc::THINNING_GUOHALL); //about 6 fps at 1k resolution
+        cv::bitwise_not(data.skeleton, data.skeleton);
     }
+}
 
-    imshow( "Skeleton Demo", target );
+void Skeletonize( int, void* )
+{
+    auto t1 = std::chrono::high_resolution_clock::now();
+    Skeletonize(data1);
+    Skeletonize(data2);
+
+    imshow( "Skeleton 1", data1.skeleton );
+    imshow( "Skeleton 2", data2.skeleton );
+
     auto t2 = std::chrono::high_resolution_clock::now();
     int duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
     std::string text = cv::format("Time: %dms | FPS: %f", duration, (1000.0/duration));
-    cv::displayStatusBar("Skeleton Demo", text);
+    cv::displayStatusBar("Skeleton 1", text);
+    cv::displayStatusBar("Skeleton 2", text);
+
+    /*
 
     //Find endpoints: only one pixel in their 8 neighbourhood
     source = target.clone();
