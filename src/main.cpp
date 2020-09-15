@@ -36,6 +36,25 @@ enum class button {
     threshold
 };
 
+class imageData {
+public:
+    cv::Mat source, skeleton, visualisation, buffer;
+
+    Camera* cam;
+
+    void resetVisual() {
+        source.copyTo(visualisation);
+    }
+
+    void renderLine(Eigen::Vector4d line) {
+        cv::Point A(line[0], line[1]);
+        cv::Point B(line[2], line[3]);
+        cv::line(visualisation, A, B, CV_RGB(100,100,100));
+    }
+};
+
+imageData data1, data2;
+
 void Skeletonize( int, void* );
 
 std::string type2str(int type) {
@@ -72,24 +91,24 @@ void callBackBtn (int i, void* a) {
     if (enable_update) Skeletonize(0,0);
 };
 
-static void onMouse(int event, int x, int y, void*) {
+static void onMouse1(int event, int x, int y, int, void*) {
+    if (event != cv::EVENT_LBUTTONDOWN)
+        return;
+    Eigen::Vector4d line = data2.cam->projectLine(data1.cam->origin, data1.cam->ray(Vector2d(x, y)));
+    data2.renderLine(line);
+
+    imshow( "Cam2 Source", data2.visualisation);
+}
+
+static void onMouse2(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN)
         return;
 
+    Eigen::Vector4d line = data1.cam->projectLine(data2.cam->origin, data2.cam->ray(Vector2d(x, y)));
+    data1.renderLine(line);
 
-
-
-
-
-    // unregister mouse callback
-
+    imshow("Cam1 Source", data1.visualisation);
 }
-
-struct imageData {
-    cv::Mat source, skeleton, visualisation, buffer;
-};
-
-imageData data1, data2;
 
 int main( int argc, char** argv )
 {
@@ -98,6 +117,9 @@ int main( int argc, char** argv )
 
     Camera cam1 = Camera(folder + "meta", 0);
     Camera cam2 = Camera(folder + "meta", 1);
+
+    data1.cam = &cam1;
+    data2.cam = &cam2;
 
     // ingest source images
     data1.source = imread( folder + cam1.name + ".png", cv::IMREAD_GRAYSCALE );
@@ -108,6 +130,8 @@ int main( int argc, char** argv )
         std::cout << "Could not open or find the image!\n" << std::endl;
         return -1;
     }
+    data1.resetVisual();
+    data2.resetVisual();
 
     // create windows
 
@@ -117,7 +141,7 @@ int main( int argc, char** argv )
     cv::namedWindow( "Skeleton 1", cv::WINDOW_AUTOSIZE);
     cv::namedWindow( "Skeleton 2", cv::WINDOW_AUTOSIZE);
 
-    cv::namedWindow( "Endpoint Demo", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow( "Endpoint Demo", cv::WINDOW_AUTOSIZE);
 
     cv::createTrackbar( "Threshold:", "Skeleton 1", &threshold, max_threshold, Skeletonize);
     cv::createTrackbar( "Kernel size:\n 2n +1", "Skeleton 1",
@@ -127,7 +151,7 @@ int main( int argc, char** argv )
     cv::createButton( "Dilate at beginning", callBackBtn, &choices[0], cv::QT_CHECKBOX, dilate);
     cv::createButton("Thin", callBackBtn, &choices[4], cv::QT_CHECKBOX, b_thin);
     cv::createButton("Threshold", callBackBtn, &choices[5], cv::QT_CHECKBOX, b_threshold);
-    cv::createButton("Smooth", callBackBtn, &choices[2], cv::QT_CHECKBOX, smooth);
+    cv::createButton("Smooth", callBackBtn, &choices[1], cv::QT_CHECKBOX, smooth);
 
     imshow( "Cam1 Source", data1.source);
     imshow( "Cam2 Source", data2.source );
@@ -136,8 +160,11 @@ int main( int argc, char** argv )
     // process source images to skeleton
     Skeletonize(0, 0);
 
+
     // input starting location to process (will be the position of catheter tip later on)
     // register mouse callback
+    cv::setMouseCallback("Cam1 Source", onMouse1);
+    cv::setMouseCallback("Cam2 Source", onMouse2);
 
     // build up graph from that starting point
     cv::waitKey(0);

@@ -10,11 +10,21 @@ void testCamera()
 {
     Camera basic = Camera("../../test/data/basic", 0);
 
-    ASSERT_EQUAL_VEC( basic.cameraUp, Vector3d(0,0,1));
+    ASSERT_EQUAL_VEC( basic.cameraUp,   Vector3d(0,0,1));
     ASSERT_EQUAL_VEC( basic.cameraLeft, Vector3d(0,1,0));
 
-    ASSERT_CLOSE( (basic.ray(0,0) + basic.ray(basic.resolution,basic.resolution)).norm(), 2);
-    ASSERT_CLOSE( basic.ray(basic.resolution/2,basic.resolution/2).x(), basic.direction.x());
+    ASSERT_CLOSE_VEC( basic.ray(Vector2d(basic.resolution/2,basic.resolution/2)), basic.direction*basic.focalLength);
+    ASSERT_CLOSE_VEC( (basic.ray(Vector2d(0,0)) + basic.ray(Vector2d(basic.resolution,basic.resolution))) , basic.direction*basic.focalLength*2 );
+
+
+    Vector2d imageCoordinate = basic.projectPoint(basic.origin + basic.direction);
+    ASSERT_CLOSE(imageCoordinate.x(), basic.resolution / 2);
+
+    imageCoordinate = basic.projectPoint(basic.origin + basic.topLeftPosition);
+    ASSERT_CLOSE(imageCoordinate.x(), 0);
+
+    imageCoordinate = basic.projectPoint(Vector3d(1,0,0));
+    ASSERT_CLOSE(imageCoordinate.x(), 512);
 }
 
 void testIntersection()
@@ -45,9 +55,40 @@ void testIntersection()
     ASSERT_CLOSE( res, 1);
 }
 
+void testProjection()
+{
+    Camera well = Camera("../../test/data/welldefined", 0);
+    Vector2d coordinate = well.projectPoint(Vector3d(0,1,1));
+
+    Vector2d initial(0,0);
+    Vector3d point = well.origin + well.ray(initial)*10;
+    Vector2d selftest = well.projectPoint(point);
+    ASSERT_CLOSE_VEC(initial, selftest);
+
+    initial.x() = well.resolution/2;
+    point = well.origin + well.ray(initial)*10;
+    selftest = well.projectPoint(point);
+    ASSERT_CLOSE_VEC(initial, selftest);
+
+    initial.y() = well.resolution/2;
+    point = well.origin + well.ray(initial)*10;
+    selftest = well.projectPoint(point);
+    ASSERT_CLOSE_VEC(initial, selftest);
+
+    selftest = well.projectPoint(well.origin + well.ray(Vector2d(0,0)));
+
+    // cams at 90°, looking at same 0,0,0, direction of one should cross the other in the middle
+    Camera left     = Camera("../../test/data/projection", 0);
+    Camera right    = Camera("../../test/data/projection", 1);
+
+    Eigen::Vector4d result = left.projectLine(right.origin, right.direction);
+
+}
+
 int main(int, char**)
 {
     testCamera();
     testIntersection();
+    testProjection();
 }
 

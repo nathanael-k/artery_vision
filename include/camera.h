@@ -12,6 +12,7 @@
 #include <iostream>
 
 using Eigen::Vector3d;
+using Eigen::Vector2d;
 
 class Camera {
 
@@ -25,7 +26,8 @@ public:
     Vector3d cameraUp;
     Vector3d cameraLeft;
 
-    Vector3d topLeftDirection;
+    // position of pixel 0,0 on the image plane
+    Vector3d topLeftPosition;
 
     // in m
     double sensorSize = 0;
@@ -34,6 +36,7 @@ public:
     // pixels
     double resolution = 0;
 
+    // distance every pixel occupies on the sensor
     double pixelDistance;
 
     Camera() {
@@ -105,9 +108,9 @@ public:
                     cameraLeft = -direction.cross(cameraUp);
 
                     // correct, if all directions are unit length
-                    pixelDistance = (sensorSize / resolution) * focalLength;
+                    pixelDistance = (sensorSize / resolution);
 
-                    topLeftDirection = direction + (cameraUp + cameraLeft) * pixelDistance * (resolution / 2);
+                    topLeftPosition = focalLength*direction + (sensorSize*cameraUp + sensorSize*cameraLeft)/2;
 
                     return;
                 }
@@ -119,8 +122,95 @@ public:
     }
 
     // origin is top left, x is right, y is down (openCV convention)
-    inline Vector3d ray(int x, int y) {
-        return (topLeftDirection - cameraLeft * x * pixelDistance - cameraUp * y * pixelDistance).normalized();
+    // points from origin to the pixel on the image plane
+    inline Vector3d ray(Vector2d position) {
+        return (topLeftPosition - cameraLeft * position.x() * pixelDistance - cameraUp * position.y() * pixelDistance);
+    }
+
+    // returns the image coordinates (at least one of x or y >= 0) on success
+    // returns -1 -1 on fail behind camera
+    inline Vector2d projectPoint(Vector3d point) {
+        // initialize as "fail" signal
+        Vector2d ret = {-1,-1};
+
+        // where does the ray from origin to point cross the image plane
+        Vector3d pointRay = point-origin;
+
+        // if point lies behind camera we dont project
+        if (pointRay.dot(direction) <= 0)
+            return ret;
+
+        // construct image plane and line
+        Eigen::ParametrizedLine<double,3> line = Eigen::ParametrizedLine<double,3> (origin, pointRay);
+        Eigen::Hyperplane<double,3> imagePlane = Eigen::Hyperplane<double,3>(direction, origin + direction*focalLength);
+
+        // intersect ray with image plane
+        Vector3d projection = line.intersectionPoint(imagePlane);
+
+        // delta is the relative vector on the imageplane, from top left pointing to our projected point
+        Vector3d delta = projection-(topLeftPosition+origin);
+
+        // x coordinate
+        ret.x() = -(delta.dot(cameraLeft)   / pixelDistance);
+        ret.y() = -(delta.dot(cameraUp) / pixelDistance);
+
+        return ret;
+    }
+
+    bool onEdge(Vector2d point) {
+        return  (abs(point.x()) < 0.00001 || abs(point.x()-resolution) < 0.00001) && (point.y() > -1 && point.y() < resolution+1)  ||
+                (abs(point.y()) < 0.00001 || abs(point.y()-resolution) < 0.00001) && (point.x() > -1 && point.x() < resolution+1);
+    }
+
+    // returns the image coordinates of the line segment projected onto the imageplane
+    // return value is x1, y1, x2, y2
+    inline Eigen::Vector4d projectLine(Vector3d _origin, Vector3d _direction) {
+
+        Eigen::ParametrizedLine<double,3> line = Eigen::ParametrizedLine<double,3> (_origin, _direction);
+
+        // construct planes
+        Eigen::Hyperplane<double,3> leftPlane = Eigen::Hyperplane<double,3>(
+                topLeftPosition.cross(ray(Vector2d(0, resolution))), origin);
+        Eigen::Hyperplane<double,3> topPlane = Eigen::Hyperplane<double,3>(
+                topLeftPosition.cross(ray(Vector2d(resolution, 0))), origin);
+        Eigen::Hyperplane<double,3> bottomPlane = Eigen::Hyperplane<double,3>(
+                ray(Vector2d(resolution,resolution)).cross(ray(Vector2d(0, resolution))), origin);
+        Eigen::Hyperplane<double,3> rightPlane = Eigen::Hyperplane<double,3>(
+                ray(Vector2d(resolution,resolution)).cross(ray(Vector2d(resolution, 0))), origin);
+
+        // intersections are correct!
+        Vector3d left =     line.intersectionPoint(leftPlane);
+        Vector3d top =      line.intersectionPoint(topPlane);
+        Vector3d right =    line.intersectionPoint(rightPlane);
+        Vector3d bottom =   line.intersectionPoint(bottomPlane);
+
+
+        // construct projections of line - plane crossings
+        Vector2d points[4];
+        points[0] =  projectPoint(line.intersectionPoint(leftPlane));
+        points[1] =  projectPoint(line.intersectionPoint(topPlane));
+        points[2] =  projectPoint(line.intersectionPoint(rightPlane));
+        points[3] =  projectPoint(line.intersectionPoint(bottomPlane));
+
+        Vector2d buffer[4];
+        int count = 0;
+
+        for (int i = 0; i<4; i++) {
+            if (onEdge(points[i])) {
+                buffer[count] = points[i];
+                count++;
+            }
+        }
+
+        // would be strange if we found more than 2 valid points
+        assert(count <= 2);
+
+        Eigen::Vector4d res;
+        if (count == 2)
+            res = Eigen::Vector4d(buffer[0].x(),buffer[0].y(),buffer[1].x(), buffer[1].y());
+        if (count <2)
+            res = Eigen::Vector4d(0,0,resolution,resolution);
+        return res;
     }
 };
 

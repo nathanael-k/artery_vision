@@ -91,3 +91,4 @@ static std::string toString(const Eigen::MatrixXd& mat){
     );                                                              \
   }                                                                 \
 }
+
