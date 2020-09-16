@@ -9,6 +9,7 @@
 #include <chrono>
 
 #include <camera.h>
+#include <arteryNet.h>
 
 int erosion_elem = 0;
 int erosion_size = 0;
@@ -26,6 +27,7 @@ bool dilate         =true;
 bool smooth         =true;
 bool acute_angle    =true;
 bool destair        =true;
+bool launchTrace    =false;
 
 enum class button {
     dilate,
@@ -33,7 +35,8 @@ enum class button {
     acute_angle,
     destair,
     thin,
-    threshold
+    threshold,
+    launchTrace
 };
 
 class imageData {
@@ -101,6 +104,7 @@ void callBackBtn (int i, void* a) {
     if (*where == button::destair)          destair = i;
     if (*where == button::thin)             b_thin = i;
     if (*where == button::threshold)        b_threshold = i;
+    if (*where == button::launchTrace)      launchTrace = i;
     if (enable_update) Skeletonize(0,0);
 };
 
@@ -200,11 +204,12 @@ int main( int argc, char** argv )
     cv::createTrackbar( "Kernel size:\n 2n +1", "Skeleton 1",
                         &dilation_size, max_kernel_size,
                         Skeletonize );
-    button choices[6] = {button::dilate, button::smooth, button::acute_angle, button::destair, button::thin, button::threshold};
+    button choices[7] = {button::dilate, button::smooth, button::acute_angle, button::destair, button::thin, button::threshold, button::launchTrace};
     cv::createButton( "Dilate at beginning", callBackBtn, &choices[0], cv::QT_CHECKBOX, dilate);
     cv::createButton("Thin", callBackBtn, &choices[4], cv::QT_CHECKBOX, b_thin);
     cv::createButton("Threshold", callBackBtn, &choices[5], cv::QT_CHECKBOX, b_threshold);
     cv::createButton("Smooth", callBackBtn, &choices[1], cv::QT_CHECKBOX, smooth);
+    cv::createButton("Trace when new origin", callBackBtn, &choices[6], cv::QT_PUSH_BUTTON, threshold);
 
     imshow( "Cam1 Source", data1.source);
     imshow( "Cam2 Source", data2.source );

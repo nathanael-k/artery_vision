@@ -2,10 +2,42 @@
 
 #include <assert.h>
 
+arteryNode::arteryNode(arteryGraph& _graph, const Eigen::Vector3d& posit, float rad)
+                    : graph(_graph), position(posit), radius(rad) {
+    graph.nEnd++;
+    graph.size++;
+}
+
+arteryNode* arteryNode::addNode(const Eigen::Vector3d& posit, float radius) {
+
+    assert(degree < MAX_DEGREE);
+
+    arteryNode* node = new arteryNode(graph, posit, radius);
+
+    // connections
+    paths[degree] = node;
+    degree++;
+    node->paths[node->degree] = this;
+    node->degree++;
+
+    // can only happen once
+    if (degree == 3) graph.nJunction++;
+    if (degree == 2) graph.nEnd--;
+
+    return node;
+}
+
+
+arteryGraph::arteryGraph(const Eigen::Vector3d& posit, float radius) {
+    root = new arteryNode(*this, posit, radius);
+}
+
 void arteryGraph::connectNodes(arteryNode *node_a, arteryNode *node_b) {
 
     assert( node_a->degree < MAX_DEGREE &&
             node_b->degree < MAX_DEGREE);
+
+
 
     // update the old node
     node_a->paths[node_a->degree] = node_a;
@@ -14,6 +46,15 @@ void arteryGraph::connectNodes(arteryNode *node_a, arteryNode *node_b) {
     // update the new node
     node_b->paths[node_b->degree] = node_b;
     node_b->degree++;
+
+    if (node_a->degree == 2)
+        nEnd--;
+    if (node_b->degree == 2)
+        nEnd--;
+    if (node_a->degree == 3)
+        nJunction++;
+    if (node_b->degree == 3)
+        nJunction++;
 }
 
 void arteryGraph::optimize() {

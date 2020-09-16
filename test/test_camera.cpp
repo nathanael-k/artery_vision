@@ -4,7 +4,7 @@
 
 #include "Base.h"
 
-#include "../include/camera.h"
+#include <camera.h>
 
 void testCamera()
 {

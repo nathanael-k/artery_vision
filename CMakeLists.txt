@@ -21,6 +21,9 @@ target_compile_features(ZHANGSUEN PUBLIC cxx_std_11)
 target_include_directories(camera PUBLIC include)
 target_compile_features(camera PUBLIC cxx_std_11)
 
+target_include_directories(arteryNet PUBLIC include)
+target_compile_features(arteryNet PUBLIC cxx_std_11)
+
 target_include_directories(test_camera PUBLIC test)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
