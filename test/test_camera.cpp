@@ -31,25 +31,25 @@ void testIntersection()
 {
     // same origin
     Vector3d point;
-    double res = intersect(Vector3d(1,2,3), Vector3d(1,0,0),
+    double res = Camera::intersect(Vector3d(1,2,3), Vector3d(1,0,0),
                            Vector3d(1,2,3), Vector3d(0,1,0), point);
     ASSERT_CLOSE_VEC(point, Vector3d(1,2,3));
     ASSERT_CLOSE( res, 0);
 
     // origin is closest point
-    res = intersect( Vector3d(0,0,0), Vector3d(0,1,0),
+    res = Camera::intersect( Vector3d(0,0,0), Vector3d(0,1,0),
                      Vector3d(1,0,0), Vector3d(0,0,1), point);
     ASSERT_CLOSE_VEC(point, Vector3d(0.5,0,0));
     ASSERT_CLOSE( res, 1);
 
     // crossing lines
-    res = intersect( Vector3d(1,0,0), Vector3d(-1,0,0),
+    res = Camera::intersect( Vector3d(1,0,0), Vector3d(-1,0,0),
                      Vector3d(0,1,0), Vector3d(0,-1,0), point);
     ASSERT_CLOSE_VEC(point, Vector3d(0,0,0));
     ASSERT_CLOSE( res, 0);
 
     // passing lines
-    res = intersect( Vector3d(1,0,1), Vector3d(-1,0,0),
+    res = Camera::intersect( Vector3d(1,0,1), Vector3d(-1,0,0),
                      Vector3d(0,1,0), Vector3d(0,-1,0), point);
     ASSERT_CLOSE_VEC(point, Vector3d(0,0,0.5));
     ASSERT_CLOSE( res, 1);

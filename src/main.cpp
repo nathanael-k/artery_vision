@@ -40,6 +40,10 @@ class imageData {
 public:
     cv::Mat source, skeleton, visualisation, buffer;
 
+    Vector3d ray;
+
+    bool pointRdy = false;
+
     Camera* cam;
 
     void resetVisual() {
@@ -50,6 +54,15 @@ public:
         cv::Point A(line[0], line[1]);
         cv::Point B(line[2], line[3]);
         cv::line(visualisation, A, B, CV_RGB(100,100,100));
+    }
+
+    void renderPoint(Vector2d point) {
+        cv::Point P(point[0], point[1]);
+        cv::circle(visualisation, P, 3, CV_RGB(100, 100, 255), 2);
+    }
+
+    void renderPoint(Vector3d point) {
+        renderPoint(cam->projectPoint(point));
     }
 };
 
@@ -94,20 +107,60 @@ void callBackBtn (int i, void* a) {
 static void onMouse1(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN)
         return;
-    Eigen::Vector4d line = data2.cam->projectLine(data1.cam->origin, data1.cam->ray(Vector2d(x, y)));
+
+    data1.ray = data1.cam->ray(Vector2d(x,y)).normalized();
+    Eigen::Vector4d line = data2.cam->projectLine(data1.cam->origin, data1.ray);
     data2.renderLine(line);
 
-    imshow( "Cam2 Source", data2.visualisation);
+    data1.pointRdy = true;
+
+    Vector3d point;
+    if (data2.pointRdy) {
+        double distance = Camera::intersect(data1.cam->origin, data1.ray, data2.cam->origin, data2.ray, point);
+
+        if (distance < 0.1) {
+            data1.renderPoint(point);
+            data2.renderPoint(point);
+            data1.pointRdy = false;
+            data2.pointRdy = false;
+        }
+
+        std::string text = cv::format("Intersection with distance %f.", distance);
+        cv::displayStatusBar("Cam1 Source", text);
+        cv::displayStatusBar("Cam2 Source", text);
+    }
+
+    imshow("Cam1 Source", data1.visualisation);
+    imshow("Cam2 Source", data2.visualisation);
 }
 
 static void onMouse2(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN)
         return;
 
-    Eigen::Vector4d line = data1.cam->projectLine(data2.cam->origin, data2.cam->ray(Vector2d(x, y)));
+    data2.ray = data2.cam->ray(Vector2d(x,y)).normalized();
+    Eigen::Vector4d line = data1.cam->projectLine(data2.cam->origin, data2.ray);
     data1.renderLine(line);
 
+    data2.pointRdy = true;
+
+    Vector3d point;
+    if (data1.pointRdy) {
+        double distance = Camera::intersect(data1.cam->origin, data1.ray, data2.cam->origin, data2.ray, point);
+        if (distance < 0.1) {
+            data1.renderPoint(point);
+            data2.renderPoint(point);
+            data1.pointRdy = false;
+            data2.pointRdy = false;
+        }
+
+        std::string text = cv::format("Intersection with distance %f.", distance);
+        cv::displayStatusBar("Cam1 Source", text);
+        cv::displayStatusBar("Cam2 Source", text);
+    }
+
     imshow("Cam1 Source", data1.visualisation);
+    imshow("Cam2 Source", data2.visualisation);
 }
 
 int main( int argc, char** argv )
