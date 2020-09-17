@@ -15,7 +15,7 @@ int erosion_elem = 0;
 int erosion_size = 0;
 int dilation_elem = 0;
 int dilation_size = 4;
-int threshold = 155;
+int threshold = 140;
 int const max_elem = 2;
 int const max_kernel_size = 21;
 int const max_threshold = 255;
@@ -296,37 +296,36 @@ static void startTrace(int i, void* a) {
     bool foundLead = false;
     Vector2d startLead;
 
-        for (int k = 0; k<10; k++) {
-            for (int i = -k; i <= k; i++) {
-                if (i == k || i == -k) {
-                for (int j = -k; j <= k; j++) {
-                    Vector2d location = data1.pixel + Vector2d(i, j);
-                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
-                        startLead = location;
-                        foundLead = true;
-                        goto endLead;
-                    }
+    for (int k = 0; k<10; k++) {
+        for (int i = -k; i <= k; i++) {
+            if (i == k || i == -k) {
+            for (int j = -k; j <= k; j++) {
+                Vector2d location = data1.pixel + Vector2d(i, j);
+                if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                    startLead = location;
+                    foundLead = true;
+                    goto endLead;
                 }
-                }
-                else {
-                    Vector2d location = data1.pixel + Vector2d(i, -k);
-                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
-                        startLead = location;
-                        foundLead = true;
-                        goto endLead;
-                    }
-                    location = data1.pixel + Vector2d(i, +k);
-                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
-                        startLead = location;
-                        foundLead = true;
-                        goto endLead;
-                    }
-                }
-
             }
-        }
+            }
+            else {
+                Vector2d location = data1.pixel + Vector2d(i, -k);
+                if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                    startLead = location;
+                    foundLead = true;
+                    goto endLead;
+                }
+                location = data1.pixel + Vector2d(i, +k);
+                if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                    startLead = location;
+                    foundLead = true;
+                    goto endLead;
+                }
+            }
 
-        endLead:
+        }
+    }
+    endLead:
 
     bool foundRef = false;
     Vector2d startRef;
@@ -396,18 +395,15 @@ static void startTrace(int i, void* a) {
 
         imshow("Skeleton 1", data1.skeleton);
         imshow("Skeleton 2", data2.skeleton);
-        cv::waitKey(10);
+        //cv::waitKey(1);
     }
-
     return;
-
-
 }
 
 int main( int argc, char** argv )
 {
     // folder
-    std::string folder = "../data/multi_cam/scene01/";
+    std::string folder = "../data/multi_cam/scene02/";
 
     Camera cam1 = Camera(folder + "meta", 0);
     Camera cam2 = Camera(folder + "meta", 1);
@@ -428,7 +424,6 @@ int main( int argc, char** argv )
     data2.resetVisual();
 
     // create windows
-
     cv::namedWindow( "Cam1 Source", cv::WINDOW_AUTOSIZE);
     cv::namedWindow( "Cam2 Source", cv::WINDOW_AUTOSIZE);
 
@@ -454,7 +449,6 @@ int main( int argc, char** argv )
 
     // process source images to skeleton
     Skeletonize(0, 0);
-
 
     // input starting location to process (will be the position of catheter tip later on)
     // register mouse callback
