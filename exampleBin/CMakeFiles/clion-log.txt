@@ -1,0 +1,4 @@
+/snap/clion/125/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/nate/Desktop/gits/artery_vision
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/nate/Desktop/gits/artery_vision/cmake-build-debug

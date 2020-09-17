@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libZHANGSUEN.a  CMakeFiles/ZHANGSUEN.dir/src/libzhangsuen/zhangsuen.cpp.o
+/usr/bin/ranlib ../lib/libZHANGSUEN.a

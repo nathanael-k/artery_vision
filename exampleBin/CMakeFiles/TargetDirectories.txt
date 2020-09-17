@@ -1,0 +1,12 @@
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/arteryNet.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/artery_vision.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/test.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/ZHANGSUEN.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/CMakeFiles/camera.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/test/CMakeFiles/rebuild_cache.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/test/CMakeFiles/test_camera.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/test/CMakeFiles/test.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/test/CMakeFiles/test_net.dir
+/home/nate/Desktop/gits/artery_vision/cmake-build-debug/test/CMakeFiles/edit_cache.dir

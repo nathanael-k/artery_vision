@@ -43,9 +43,11 @@ class imageData {
 public:
     cv::Mat source, skeleton, visualisation, buffer;
 
+    Vector2d pixel;
     Vector3d ray;
 
     bool pointRdy = false;
+    bool executeRdy = false;
 
     Camera* cam;
 
@@ -68,6 +70,120 @@ public:
         renderPoint(cam->projectPoint(point));
     }
 };
+
+// finds the coordinates where the reference has the best ray trough the lead
+int correlate(const imageData& lead, const imageData& reference,
+               const Vector2d& leadPixel, const Vector2d& refPixel, Vector2d& bestPixel,
+               Vector3d& point, double& distance, int range = 2) {
+
+    distance = std::numeric_limits<double>::max();
+    int area = range + 1;
+
+    // go trough whole neighbourhood
+    for (int i = -range; i <= range; i++) {
+        for (int j = -range; j <= range; j++) {
+            Vector2d location = refPixel + Vector2d(i,j);
+            // is it painted?
+            if (reference.skeleton.at<uchar>(location.y(), location.x()) < 255) {
+                Vector3d test;
+                double dist = Camera::intersect(lead.cam->origin, lead.cam->ray(leadPixel).normalized(),
+                                                reference.cam->origin, reference.cam->ray(location).normalized(),
+                                                test);
+                // is it closer?
+                if (dist < distance) {
+                    bestPixel = location;
+                    distance = dist;
+                    point = test;
+                    // is the new point connected?
+                    area = std::max(abs(i), abs(j));
+                }
+
+            }
+
+        }
+    }
+    return area;
+}
+
+// a combination that we already know correlates, but we keep it for later
+struct candidate {
+    imageData& lead;
+    imageData& reference;
+    Vector2d leadPixel, refPixel;
+    Vector3d position;
+    arteryNode& node;
+};
+
+
+
+//traces a line, starting from a pixel - correlating two renders / skeletons
+//adds to a graph, appending at the node passed as
+//marking traced pixels with 100, spawns new traces if other directions are present
+//Pre: both imageData have the skeleton populated with black, g
+void trace(imageData* lead, imageData* reference, Vector2d leadPixel, Vector2d refPixel,
+           arteryGraph& graph, arteryNode* node, std::vector<candidate>& candidates){
+    // make sure we are not doing bullshit
+    assert(     lead->skeleton.at<uchar>(leadPixel.y(), leadPixel.x()) < 255);
+    assert(reference->skeleton.at<uchar>( refPixel.y(),  refPixel.x()) < 255);
+
+    // add the current pixel, correlated
+    Vector3d position;
+    Vector2d bestPixel;
+
+    int added = 0;
+
+    // add new candidates from lead pixel
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            Vector2d location = leadPixel + Vector2d(i,j);
+            // unchecked pixel?
+            if (lead->skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                double distance;
+                int radius = correlate(*lead, *reference, leadPixel, refPixel, bestPixel, position, distance);
+                if(radius < 2 && distance < 0.02) {
+                    candidates.push_back(candidate{*lead, *reference, location, bestPixel, position, *node});
+                    lead->skeleton.at<uchar>(location.y(), location.x()) = 80;
+                    if (reference->skeleton.at<uchar>(bestPixel.y(), bestPixel.x()) < 100)
+                        reference->skeleton.at<uchar>(bestPixel.y(), bestPixel.x()) = 81;
+                    added++;
+                }
+            }
+        }
+    }
+
+    // add new candidates from reference pixel
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            Vector2d location = refPixel + Vector2d(i,j);
+            // unchecked pixel?
+            if (reference->skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                double distance;
+                int radius = correlate(*reference, *lead, refPixel, leadPixel, bestPixel, position, distance);
+                if(radius < 2 && distance < 0.02) {
+                    candidates.push_back(candidate{*reference, *lead, location, bestPixel, position, *node});
+                    reference->skeleton.at<uchar>(location.y(), location.x()) = 82;
+                    if (lead->skeleton.at<uchar>(bestPixel.y(), bestPixel.x()) < 100)
+                        lead->skeleton.at<uchar>(bestPixel.y(), bestPixel.x()) = 83;
+                    added++;
+                }
+            }
+        }
+    }
+
+    if (added == 0) {
+        // we added no new candidates, so either we are at an end, or we are closing a loop
+
+    }
+}
+
+void exploreOne(std::vector<candidate>& candidates, arteryGraph& graph) {
+    candidate candy = candidates.back(); candidates.pop_back();
+    arteryNode* node = candy.node.addNode(candy.position);
+    candy.lead.skeleton.at<uchar>(candy.leadPixel.y(), candy.leadPixel.x()) = 100;
+    candy.reference.skeleton.at<uchar>( candy.refPixel.y(),  candy.refPixel.x()) = 100;
+
+    trace(&candy.lead, &candy.reference, candy.leadPixel, candy.refPixel, graph, node, candidates);
+}
 
 imageData data1, data2;
 
@@ -112,11 +228,13 @@ static void onMouse1(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN)
         return;
 
+    data1.pixel = Vector2d(x,y);
     data1.ray = data1.cam->ray(Vector2d(x,y)).normalized();
     Eigen::Vector4d line = data2.cam->projectLine(data1.cam->origin, data1.ray);
     data2.renderLine(line);
 
     data1.pointRdy = true;
+    data1.executeRdy = true;
 
     Vector3d point;
     if (data2.pointRdy) {
@@ -142,11 +260,13 @@ static void onMouse2(int event, int x, int y, int, void*) {
     if (event != cv::EVENT_LBUTTONDOWN)
         return;
 
+    data2.pixel = Vector2d(x,y);
     data2.ray = data2.cam->ray(Vector2d(x,y)).normalized();
     Eigen::Vector4d line = data1.cam->projectLine(data2.cam->origin, data2.ray);
     data1.renderLine(line);
 
     data2.pointRdy = true;
+    data2.executeRdy = true;
 
     Vector3d point;
     if (data1.pointRdy) {
@@ -165,6 +285,123 @@ static void onMouse2(int event, int x, int y, int, void*) {
 
     imshow("Cam1 Source", data1.visualisation);
     imshow("Cam2 Source", data2.visualisation);
+}
+
+static void startTrace(int i, void* a) {
+    // only start if we are ready!
+    if (data1.executeRdy == false || data2.executeRdy == false) return;
+
+    // init:
+    // find first actual points on skeleton
+    bool foundLead = false;
+    Vector2d startLead;
+
+        for (int k = 0; k<10; k++) {
+            for (int i = -k; i <= k; i++) {
+                if (i == k || i == -k) {
+                for (int j = -k; j <= k; j++) {
+                    Vector2d location = data1.pixel + Vector2d(i, j);
+                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                        startLead = location;
+                        foundLead = true;
+                        goto endLead;
+                    }
+                }
+                }
+                else {
+                    Vector2d location = data1.pixel + Vector2d(i, -k);
+                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                        startLead = location;
+                        foundLead = true;
+                        goto endLead;
+                    }
+                    location = data1.pixel + Vector2d(i, +k);
+                    if (data1.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                        startLead = location;
+                        foundLead = true;
+                        goto endLead;
+                    }
+                }
+
+            }
+        }
+
+        endLead:
+
+    bool foundRef = false;
+    Vector2d startRef;
+    for (int k = 0; k<10; k++) {
+        for (int i = -k; i <= k; i++) {
+            if (i == k || i == -k) {
+                for (int j = -k; j <= k; j++) {
+                    Vector2d location = data2.pixel + Vector2d(i, j);
+                    if (data2.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                        startRef = location;
+                        foundRef = true;
+                        goto endRef;
+                    }
+                }
+            }
+            else {
+                Vector2d location = data2.pixel + Vector2d(i, -k);
+                if (data2.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                    startRef = location;
+                    foundRef = true;
+                    goto endRef;
+                }
+                location = data2.pixel + Vector2d(i, +k);
+                if (data2.skeleton.at<uchar>(location.y(), location.x()) == 0) {
+                    startRef = location;
+                    foundRef = true;
+                    goto endRef;
+                }
+            }
+
+        }
+    }
+    endRef:
+
+    imshow("Skeleton 1", data1.skeleton);
+    imshow("Skeleton 2", data2.skeleton);
+
+    if (!foundLead || !foundRef)
+        return;
+    assert (foundLead && foundRef);
+
+    Vector3d position;
+    Vector2d pixel;
+    double distance;
+
+    //search far for the best match
+    if (!correlate(data1,data2,startLead,startRef,pixel,position, distance, 10))
+        assert (true);
+
+    arteryGraph graph(position);
+    std::vector<candidate> candidates;
+    candidates.push_back({data1, data2, startLead, pixel, position, *graph.root });
+    data1.renderPoint(position);
+    data2.renderPoint(position);
+    imshow("Cam1 Source", data1.visualisation);
+    imshow("Cam2 Source", data2.visualisation);
+
+    int count = 0;
+
+    while (!candidates.empty()) {
+        count++;
+        data1.renderPoint(candidates.back().position);
+        data2.renderPoint(candidates.back().position);
+        exploreOne(candidates, graph);
+        imshow("Cam1 Source", data1.visualisation);
+        imshow("Cam2 Source", data2.visualisation);
+
+        imshow("Skeleton 1", data1.skeleton);
+        imshow("Skeleton 2", data2.skeleton);
+        cv::waitKey(10);
+    }
+
+    return;
+
+
 }
 
 int main( int argc, char** argv )
@@ -209,7 +446,7 @@ int main( int argc, char** argv )
     cv::createButton("Thin", callBackBtn, &choices[4], cv::QT_CHECKBOX, b_thin);
     cv::createButton("Threshold", callBackBtn, &choices[5], cv::QT_CHECKBOX, b_threshold);
     cv::createButton("Smooth", callBackBtn, &choices[1], cv::QT_CHECKBOX, smooth);
-    cv::createButton("Trace when new origin", callBackBtn, &choices[6], cv::QT_PUSH_BUTTON, threshold);
+    cv::createButton("Trace when new origin", startTrace, nullptr, cv::QT_PUSH_BUTTON, 0);
 
     imshow( "Cam1 Source", data1.source);
     imshow( "Cam2 Source", data2.source );

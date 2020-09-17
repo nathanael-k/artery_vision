@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libarteryNet.a  CMakeFiles/arteryNet.dir/src/arteryNet/arteryNet.cpp.o
+/usr/bin/ranlib ../lib/libarteryNet.a
