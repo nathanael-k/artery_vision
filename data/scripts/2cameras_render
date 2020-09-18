@@ -1,0 +1,45 @@
+# Run as: blender -b <filename> -P <this_script> -- <cam1.name> <cam2.name> <#frames>
+# example: (from terminal in folder /scripts
+# /snap/bin/blender -b "../scenes/flow_1.blend" -P "2cameras_render" -- front left 10
+
+import bpy, sys, os
+
+# Assume the last argument is image path
+#imagePath = sys.argv[-1]
+
+
+
+renderFolder = bpy.path.abspath("//../renders/" + os.path.splitext(bpy.path.basename(bpy.context.blend_data.filepath))[0] + "/")
+
+frames = int(sys.argv[-1])
+
+sceneKey = bpy.data.scenes.keys()[0]
+bpy.context.scene.render.fps = frames
+
+## find and render specified cameras
+for obj in bpy.data.objects:
+    if (obj.type == 'CAMERA'):
+        print("found camera: " + obj.name)
+        if (obj.name == sys.argv[-3] or obj.name == sys.argv[-2]):
+            print("rendering this camera")
+            bpy.data.scenes[sceneKey].camera = obj
+            for i in range(frames):
+                bpy.context.scene.render.filepath = renderFolder + obj.name + "_{:03d}".format(i)
+                bpy.context.scene.frame_set(i)
+                bpy.ops.render.render(write_still=True)
+        
+
+
+
+    # Assume object, material and texture name (and settings) are valid
+    #charObj = bpy.data.objects['Char01']
+    #charMat = charObj.material_slots['Char01Mat'].material
+    #charTex = charMat.texture_slots['Char01Tex'].texture
+    #charTex.image.filepath = imagePath
+
+    # Render to separate file, identified by texture file
+    #imageBaseName = bpy.path.basename(imagePath)
+    #bpy.context.scene.render.filepath += '-' + imageBaseName
+
+    # Render still image, automatically write to output path
+    
