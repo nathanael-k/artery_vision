@@ -1,0 +1,8 @@
+//
+// Created by nate on 19.09.20.
+//
+
+#ifndef ARTERY_VISION_IMAGEDATA_H
+#define ARTERY_VISION_IMAGEDATA_H
+
+#endif //ARTERY_VISION_IMAGEDATA_H
