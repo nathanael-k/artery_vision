@@ -10,12 +10,8 @@
 #include <arteryNet.h>
 #include <imageData.h>
 
-int erosion_elem = 0;
-int erosion_size = 0;
-int dilation_elem = 0;
 int dilation_size = 4;
 int threshold = 140;
-int const max_elem = 2;
 int const max_kernel_size = 21;
 int const max_threshold = 255;
 
@@ -308,8 +304,8 @@ int main( int argc, char** argv )
 void Skeletonize( int, void* )
 {
     auto t1 = std::chrono::high_resolution_clock::now();
-    Skeletonize(data1, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
-    Skeletonize(data2, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
+    data1.Skeletonize(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
+    data2.Skeletonize(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
 
     imshow( "Skeleton 1", data1.skeleton[0] );
     imshow( "Skeleton 2", data2.skeleton[0] );
