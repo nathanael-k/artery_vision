@@ -43,7 +43,7 @@ public:
 
     // origin is top left, x is right, y is down (openCV convention)
     // points from origin to the pixel on the image plane
-    Vector3d const ray(const Vector2d& position);
+    Vector3d ray(const Vector2d& position) const;
 
     // returns the image coordinates (at least one of x or y >= 0) on success
     // returns -1 -1 on fail behind camera

@@ -85,7 +85,7 @@ Camera::Camera(std::string metaPath, int index) {
     exit(1);
 }
 
-Vector3d const Camera::ray(const Vector2d &position) {
+Vector3d Camera::ray(const Vector2d &position) const{
     return (topLeftPosition - cameraLeft * position.x() * pixelDistance - cameraUp * position.y() * pixelDistance);
 }
 
