@@ -171,7 +171,7 @@ void imageData::Endpoints(int index) {
 
 int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
               const Vector2d& leadPixel, const Vector2d& refPixel, Vector2d& bestPixel,
-              Vector3d& point, double& distance, int range) {
+              Vector3d& point, double& distance, int range, int cutoff) {
 
     distance = std::numeric_limits<double>::max();
     int pixelDistance = -1;
@@ -181,7 +181,7 @@ int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
         for (int j = -range; j <= range; j++) {
             Vector2d location = refPixel + Vector2d(i,j);
             // is it part of the skeleton?
-            if (ref.at<uchar>(location.y(), location.x()) < 255) {
+            if (ref.at<uchar>(location.y(), location.x()) < cutoff) {
                 Vector3d test;
                 double dist = Camera::intersect(leadCam, leadPixel,
                                                 refCam, refPixel,

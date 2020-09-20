@@ -148,7 +148,6 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         // greedily match endpoints
         // while loop allows us to directly remove found matches
-
         auto it1 = ends1.begin();
         while(it1 != ends1.end()) {
             auto it2 = ends2.begin();
@@ -205,17 +204,21 @@ void buildGraph(imageData& data1, imageData& data2) {
                 data2.buffer[index].at<uchar>(point.posB.y(), point.posB.x()) = i;
         }
 
-        // right now we need at least one matched node, this will be the root node
-        assert(locatedPoints[0].foundA && locatedPoints[0].foundB);
-        graph.root = locatedPoints[0].node;
-        graph.root->enddraw = false;
-        finishedPoints++;
+        // only first round
+        if (index == 0) {
+            // right now we need at least one matched node, this will be the root node
+            assert(locatedPoints[0].foundA && locatedPoints[0].foundB);
+            graph.root = locatedPoints[0].node;
+            graph.root->enddraw = false;
+            finishedPoints = 1;
+        }
 
         // 5) trace image (on skeleton) beginning at matched endpoints, until you find a marked point in the buffer
         // 6) if that point is already matched, connect in the graph and continue
         // 7) unmatched points can be easily matched because you know locally where you are (thanks to tracing) -> match them and add them to the graph
         for (int i = finishedPoints; i < locatedPoints.size(); i++) {
             auto& point = locatedPoints[i];
+            debugWaitShow();
             bool success = trace(data1, data2, index, point, locatedPoints);
             assert (success);
         }
@@ -255,10 +258,11 @@ void buildGraph(imageData& data1, imageData& data2) {
             data2.buffer[index+1].at<uchar>(point.posB.y(), point.posB.x()) = i;
         }
 
-        debugWaitShow();
+        // trace and delete the whole "old" part of the graph!
+        // is it necessary???
 
-        cv::waitKey(0);
-
+        // declare this part as finished!
+        finishedPoints = locatedPoints.size();
     }
 }
 
@@ -298,7 +302,7 @@ int pointCloseTo(const cv::Mat& img, uchar value, Vector2d& position) {
 // tries to find best match, returns distance
 double bestMatch(cv::Mat& img1, Camera& cam1, Vector2d& pix1, cv::Mat& img2, Camera& cam2, Vector2d& pix2, Vector3d& position) {
 
-    // find point in skeleton that is < 255 for img1 and 2
+    // find point in skeleton that is == 255 for img1 and 2
     Vector2d candidate1;
     bool candidate1found = false;
     for (int i = -1; i <= 1; i++)
@@ -327,20 +331,24 @@ double bestMatch(cv::Mat& img1, Camera& cam1, Vector2d& pix1, cv::Mat& img2, Cam
 
     assert(candidate1found && candidate2found);
 
+    // to which do these candidates fit best?
     double best1, best2;
     Vector2d pix2_new, pix1_new;
     Vector3d pos1, pos2;
-    correlate(img2, cam1, cam2, candidate1, pix2, pix2_new, pos1, best1, 1);
-    correlate(img1, cam2, cam1, candidate2, pix1, pix1_new, pos2, best2, 1);
+    correlate(img2, cam1, cam2, candidate1, pix2, pix2_new, pos1, best1, 1, 2);
+    correlate(img1, cam2, cam1, candidate2, pix1, pix1_new, pos2, best2, 1, 2);
 
     std::cout << "Match1: " << best1 << " Match2: " << best2 << std::endl;
 
     if (best1 < best2) {
+        // never go back if we left!
+        img1.at<uchar>(pix1.y(), pix1.x()) = 2;
         pix1 = candidate1;
         pix2 = pix2_new;
         position = pos1;
         return best1;
     }
+    img2.at<uchar>(pix2.y(), pix2.x()) = 2;
     pix2 = candidate2;
     pix1 = pix1_new;
     position = pos2;
@@ -354,20 +362,16 @@ bool trace(imageData& data1, imageData& data2, int index, specialPoint& point,
     Vector2d locA = point.posA;
     Vector2d locB = point.posB;
 
-
-
-
 nextPixel:
-        // mark pixel in skeleton as processed
-        data1.skeleton[index].at<uchar>(locA.y(), locA.x()) = 1;
-        data2.skeleton[index].at<uchar>(locB.y(), locB.x()) = 1;
+    // mark pixel in skeleton as processed
+    data1.skeleton[index].at<uchar>(locA.y(), locA.x()) = 1;
+    data2.skeleton[index].at<uchar>(locB.y(), locB.x()) = 1;
 
-
-        Vector3d position;
-        // directly get new positions where we matched
-        double distance = bestMatch(data1.skeleton[index], data1.cam, locA,
-                                    data2.skeleton[index], data2.cam, locB,
-                                    position);
+    Vector3d position;
+    // directly get new positions where we matched
+    double distance = bestMatch(data1.skeleton[index], data1.cam, locA,
+                                data2.skeleton[index], data2.cam, locB,
+                                position);
 
     // check if pixel is special:
     int otherIndex = -1;

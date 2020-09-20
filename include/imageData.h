@@ -102,7 +102,7 @@ struct candidate {
 // -1 means we did not find anything
 int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
               const Vector2d& leadPixel, const Vector2d& refPixel, Vector2d& bestPixel,
-              Vector3d& point, double& distance, int range = 2);
+              Vector3d& point, double& distance, int range = 2, int cutoff = 255);
 
 //traces a line, starting from a pixel - correlating two renders / skeletons
 //adds to a graph, appending at the node passed as
