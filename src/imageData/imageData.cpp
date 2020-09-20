@@ -61,11 +61,22 @@ void imageData::resetVisual(from where) {
     }
 }
 
-void imageData::renderLine(Eigen::Vector4d line, int index) {
+void imageData::renderLine(const Eigen::Vector4d& line, int index) {
     cv::Point A(line[0], line[1]);
     cv::Point B(line[2], line[3]);
     cv::line(visualisation[index], A, B, CV_RGB(100,100,100));
 }
+
+
+void imageData::renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index) {
+    Vector2d a,b;
+    a = cam.projectPoint(begin); b = cam.projectPoint(end);
+    cv::Point A(a[0],a[1]);
+    cv::Point B(b[0],b[1]);
+    cv::line(visualisation[index], A, B, CV_RGB(255,100,100));
+}
+
+
 
 void imageData::renderPoint(Vector2d point, int index) {
     cv::Point P(point[0], point[1]);
@@ -157,21 +168,23 @@ void imageData::Endpoints(int index) {
 }
 
 
-int correlate(const imageData &lead, const imageData &reference, const Vector2d &leadPixel, const Vector2d &refPixel,
-              Vector2d &bestPixel, Vector3d &point, double &distance, int range, int index) {
+
+int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
+              const Vector2d& leadPixel, const Vector2d& refPixel, Vector2d& bestPixel,
+              Vector3d& point, double& distance, int range) {
 
     distance = std::numeric_limits<double>::max();
-    int area = range + 1;
+    int pixelDistance = -1;
 
     // go trough whole neighbourhood
     for (int i = -range; i <= range; i++) {
         for (int j = -range; j <= range; j++) {
             Vector2d location = refPixel + Vector2d(i,j);
-            // is it painted?
-            if (reference.skeleton[index].at<uchar>(location.y(), location.x()) < 255) {
+            // is it part of the skeleton?
+            if (ref.at<uchar>(location.y(), location.x()) < 255) {
                 Vector3d test;
-                double dist = Camera::intersect(lead.cam.origin, lead.cam.ray(leadPixel).normalized(),
-                                                reference.cam.origin, reference.cam.ray(location).normalized(),
+                double dist = Camera::intersect(leadCam, leadPixel,
+                                                refCam, refPixel,
                                                 test);
                 // is it closer?
                 if (dist < distance) {
@@ -179,14 +192,14 @@ int correlate(const imageData &lead, const imageData &reference, const Vector2d 
                     distance = dist;
                     point = test;
                     // is the new point connected?
-                    area = std::max(abs(i), abs(j));
+                    pixelDistance = std::max(abs(i), abs(j));
                 }
 
             }
 
         }
     }
-    return area;
+    return pixelDistance;
 }
 
 void trace(imageData *lead, imageData *reference, Vector2d leadPixel, Vector2d refPixel, arteryGraph &graph,
@@ -208,7 +221,9 @@ void trace(imageData *lead, imageData *reference, Vector2d leadPixel, Vector2d r
             // unchecked pixel?
             if (lead->skeleton[index].at<uchar>(location.y(), location.x()) == 0) {
                 double distance;
-                int radius = correlate(*lead, *reference, leadPixel, refPixel, bestPixel, position, distance);
+                int radius = correlate(reference->skeleton[index], lead->cam, reference->cam,
+                                       leadPixel, refPixel, bestPixel, position, distance);
+                assert(radius != -1);
                 if(radius < 2 && distance < 0.02) {
                     candidates.push_back(candidate{*lead, *reference, location, bestPixel, position, *node});
                     lead->skeleton[index].at<uchar>(location.y(), location.x()) = 80;
@@ -227,7 +242,9 @@ void trace(imageData *lead, imageData *reference, Vector2d leadPixel, Vector2d r
             // unchecked pixel?
             if (reference->skeleton[index].at<uchar>(location.y(), location.x()) == 0) {
                 double distance;
-                int radius = correlate(*reference, *lead, refPixel, leadPixel, bestPixel, position, distance);
+                int radius = correlate(lead->skeleton[index], reference->cam, lead->cam,
+                                       refPixel, leadPixel, bestPixel, position, distance);
+                assert(radius != -1);
                 if(radius < 2 && distance < 0.02) {
                     candidates.push_back(candidate{*reference, *lead, location, bestPixel, position, *node});
                     reference->skeleton[index].at<uchar>(location.y(), location.x()) = 82;

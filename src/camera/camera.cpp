@@ -89,7 +89,7 @@ Vector3d Camera::ray(const Vector2d &position) const{
     return (topLeftPosition - cameraLeft * position.x() * pixelDistance - cameraUp * position.y() * pixelDistance);
 }
 
-Vector2d const Camera::projectPoint(const Vector3d &point) {
+Vector2d Camera::projectPoint(const Vector3d &point) const{
     // initialize as "fail" signal
     Vector2d ret = {-1, -1};
 
@@ -175,7 +175,7 @@ Eigen::Vector4d const Camera::projectLine(const Vector3d &_origin, const Vector3
     return res;
 }
 
-double const Camera::intersect(const Vector3d &originA, const Vector3d &directionA,
+double Camera::intersect(const Vector3d &originA, const Vector3d &directionA,
                                const Vector3d &originB, const Vector3d &directionB, Vector3d &point) {
 
     assert(abs(directionA.norm() - 1) < 0.00001);
@@ -205,6 +205,12 @@ double const Camera::intersect(const Vector3d &originA, const Vector3d &directio
 
     point = (pointA + pointB) / 2;
     return (pointA - pointB).norm();
+}
+
+double Camera::intersect(const Camera& camA, const Vector2d& pixelA,
+                         const Camera& camB, const Vector2d& pixelB, Vector3d& intersection) {
+    return Camera::intersect(camA.origin, camA.ray(pixelA).normalized(),
+                             camB.origin, camB.ray(pixelB).normalized(), intersection);
 }
 
 

@@ -16,6 +16,8 @@ public:
     int degree = 0;
     const float radius;
     bool optimized = false;
+    bool enddraw = true;
+    int index = -1;
 
     arteryNode* junctions[MAX_DEGREE] = {nullptr};
     arteryNode* paths[MAX_DEGREE] = {nullptr};
@@ -37,6 +39,7 @@ public:
     // start a new net with some position as first node
 
     arteryGraph(const Eigen::Vector3d& posit, float radius = DEFAULT_RADIUS);
+    arteryGraph() {};
 
     // establish direct link between junctions for faster processing
     void contractPath(arteryNode* start, int direction);

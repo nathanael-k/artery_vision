@@ -47,7 +47,7 @@ public:
 
     // returns the image coordinates (at least one of x or y >= 0) on success
     // returns -1 -1 on fail behind camera
-    Vector2d const projectPoint(const Vector3d& point);
+    Vector2d projectPoint(const Vector3d& point) const;
 
     // returns true if the pixel is on the edge of the frustrum
     bool const onEdge(const Vector2d& point);
@@ -57,8 +57,10 @@ public:
     Eigen::Vector4d const projectLine(const Vector3d &_origin, const Vector3d &_direction);
 
     // find the closest point between two lines (intersection if the cross), return the distance
-    double const static intersect(const Vector3d& originA, const Vector3d& directionA,
+    double static intersect(const Vector3d& originA, const Vector3d& directionA,
                      const Vector3d& originB, const Vector3d& directionB, Vector3d& intersection);
+
+    double static intersect(const Camera& camA, const Vector2d& pixelA, const Camera& camB, const Vector2d& pixelB, Vector3d& intersection);
 };
 
 

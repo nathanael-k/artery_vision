@@ -40,11 +40,11 @@ void arteryGraph::connectNodes(arteryNode *node_a, arteryNode *node_b) {
 
 
     // update the old node
-    node_a->paths[node_a->degree] = node_a;
+    node_a->paths[node_a->degree] = node_b;
     node_a->degree++;
 
     // update the new node
-    node_b->paths[node_b->degree] = node_b;
+    node_b->paths[node_b->degree] = node_a;
     node_b->degree++;
 
     if (node_a->degree == 2)

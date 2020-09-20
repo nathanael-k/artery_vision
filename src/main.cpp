@@ -224,8 +224,12 @@ static void startTrace(int i, void* a) {
     double distance;
 
     //search far for the best match
-    if (!correlate(data1,data2,startLead,startRef,pixel,position, distance, 10))
-        assert (true);
+    int pixelDistance = correlate(data1.skeleton[0],data2.skeleton[0],
+                                  data1.cam,data2.cam,
+                                  startLead,startRef,
+                                  pixel,position, distance, 10);
+    if (pixelDistance < 0)
+        assert (false);
 
     arteryGraph graph(position);
     std::vector<candidate> candidates;
@@ -283,8 +287,11 @@ int main( int argc, char** argv )
     cv::createButton("Smooth", callBackBtn, &choices[1], cv::QT_CHECKBOX, smooth);
     cv::createButton("Trace when new origin", startTrace, nullptr, cv::QT_PUSH_BUTTON, 0);
 
+    data1.source[0].copyTo(data1.visualisation[0]);
+    data2.source[0].copyTo(data2.visualisation[0]);
+
     imshow( "Cam1 Source", data1.source[0]);
-    imshow( "Cam2 Source", data2.source[0] );
+    imshow( "Cam2 Source", data2.source[0]);
     enable_update = true;
 
     // process source images to skeleton

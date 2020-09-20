@@ -46,7 +46,9 @@ public:
 
     void resetVisual(from where = from::source);
 
-    void renderLine(Eigen::Vector4d line, int index = 0);
+    void renderLine(const Eigen::Vector4d& line, int index = 0);
+
+    void renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index = 0);
 
     void renderPoint(Vector2d point, int index = 0);
 
@@ -68,6 +70,19 @@ public:
             Endpoints(i);
         }
     }
+
+    void drawGraph(arteryNode& node, int index = 0) {
+        renderPoint(node.position, index);
+
+        int i = 1;
+        if (node.index == 0)
+            i = 0;
+
+        for (; i<node.degree; i++) {
+            renderLine(node.position, node.paths[i]->position);
+            drawGraph(*node.paths[i], index);
+        }
+    }
 };
 
 // a combination that we already know correlates, but we keep it for later
@@ -81,9 +96,13 @@ struct candidate {
 };
 
 // finds the coordinates where the reference has the best ray trough the lead
-int correlate(const imageData& lead, const imageData& reference,
+// saves bestPixel where the reference picture should be
+// distance is how far these points are
+// returns pixelDistance: counts how many pixels are between
+// -1 means we did not find anything
+int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
               const Vector2d& leadPixel, const Vector2d& refPixel, Vector2d& bestPixel,
-              Vector3d& point, double& distance, int range = 2, int index = 0);
+              Vector3d& point, double& distance, int range = 2);
 
 //traces a line, starting from a pixel - correlating two renders / skeletons
 //adds to a graph, appending at the node passed as
