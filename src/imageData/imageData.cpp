@@ -92,13 +92,15 @@ void imageData::renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& 
 
 
 
-void imageData::renderPoint(Vector2d point, int index) {
+void imageData::renderPoint(Vector2d point, int label, int index) {
     cv::Point P(point[0], point[1]);
     cv::circle(visualisation[index], P, 3, CV_RGB(100, 100, 255), 2);
+    if (label >= 0)
+        cv::putText(visualisation[index], std::to_string(label), P, 0, 1, CV_RGB(255,255,255));
 }
 
-void imageData::renderPoint(Vector3d point, int index) {
-    renderPoint(cam.projectPoint(point), index);
+void imageData::renderPoint(Vector3d point, int label, int index) {
+    renderPoint(cam.projectPoint(point), label, index);
 }
 
 void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
@@ -131,6 +133,59 @@ void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
         cv::ximgproc::thinning(skeleton[index], skeleton[index], cv::ximgproc::THINNING_GUOHALL); //about 6 fps at 1k resolution
         //cv::bitwise_not(skeleton[index], skeleton[index]);
     }
+
+    // now we have a skeleton, but we can still have T shapes and other problems, so lets remove some more pixels
+
+    // for T shapes, we just have to remove the pixel at the top of the T in the middle
+    // prepare Kernels
+    std::vector<cv::Mat> Kernels(4);
+    // "T"
+    Kernels[0] = (cv::Mat_<int>(3,3) << -1,-1,-1,  1,1,1,    -1,1,-1);
+    Kernels[1] = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,1,    -1,1,-1);
+    Kernels[2] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,-1,    -1,1,-1);
+    Kernels[3] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,1,    -1,-1,-1);
+
+    for (int i = 0; i<4; i++) {
+        cv::morphologyEx(skeleton[index], buffer[index], cv::MORPH_HITMISS, Kernels[i]);
+        skeleton[index] = skeleton[index] - (buffer[index]);
+    }
+
+    // we can also have arrows:
+    // X         x
+    //  xx   ->  x x
+    //  x         x
+    Kernels[0] = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,1,    -1,1,-1);
+    Kernels[1] = (cv::Mat_<int>(3,3) << -1,-1,1,  1,1,-1,    -1,1,-1);
+    Kernels[2] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,-1,    -1,-1,1);
+    Kernels[3] = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,1,    1,-1,-1);
+
+    std::vector<cv::Point> Points(4);
+    Points[0] = cv::Point(1,0);
+    Points[1] = cv::Point(1,0);
+    Points[2] = cv::Point(2,1);
+    Points[3] = cv::Point(1,2);
+
+
+    endpoints[index] = cv::Mat::zeros(skeleton[index].cols, skeleton[index].rows, skeleton[index].type());
+    // cache points to add
+    for (int i = 0; i<4; i++) {
+        cv::morphologyEx(skeleton[index], buffer[index], cv::MORPH_HITMISS, Kernels[i], Points[i]);
+        endpoints[index] = endpoints[index] + (buffer[index]);
+    }
+    // remove points
+    for (int i = 0; i<4; i++) {
+        cv::morphologyEx(skeleton[index], buffer[index], cv::MORPH_HITMISS, Kernels[i]);
+        skeleton[index] = skeleton[index] - (buffer[index]);
+    }
+
+    // strange pixels appear on the horizon
+    int max = skeleton[index].cols;
+    endpoints[index].at<uchar>(0,0) = 0;
+    endpoints[index].at<uchar>(max-1,0) = 0;
+    endpoints[index].at<uchar>(0,max-1) = 0;
+    endpoints[index].at<uchar>(max-1,max-1) = 0;
+    // add prepared points
+    skeleton[index] = skeleton[index] + endpoints[index];
 }
 
 
@@ -152,7 +207,20 @@ void imageData::Endpoints(int index) {
     }
 
     // prepare Kernels
-    std::vector<cv::Mat> Kernels(16);
+    std::vector<cv::Mat> Kernels(8);
+    // "corners"
+    Kernels[0]  = (cv::Mat_<int>(3,3) << -1,-1,1,  -1,1,-1,    1,-1,1);
+    Kernels[1]  = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,-1,    1,-1,1);
+    Kernels[2]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    -1,-1,1);
+    Kernels[3]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    1,-1,-1);
+    // "rooks"
+    Kernels[4]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    -1,1,-1);
+    Kernels[5]  = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,1,    1,-1,-1);
+    Kernels[6]  = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,-1,    1,-1,1);
+    Kernels[7]  = (cv::Mat_<int>(3,3) << -1,-1,1,  1,1,-1,    -1,-1,1);
+
+
+    /*
     // "arrows"
     Kernels[0]  = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,-1,    -1,-1,1);
     Kernels[1]  = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,1,    1,-1,-1);
@@ -173,9 +241,10 @@ void imageData::Endpoints(int index) {
     Kernels[13] = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,1,    1,-1,-1);
     Kernels[14] = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,-1,    1,-1,1);
     Kernels[15] = (cv::Mat_<int>(3,3) << -1,-1,1,  1,1,-1,    -1,-1,1);
+     */
 
     // splits
-    for (int i = 0; i<16; i++) {
+    for (int i = 0; i<8; i++) {
             cv::morphologyEx(skeleton[index], buffer[index], cv::MORPH_HITMISS, Kernels[i]);
             endpoints[index] = endpoints[index] | (buffer[index] / 2);
     }
@@ -312,18 +381,22 @@ Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
         if (ref.at<uchar>(curr.y(), curr.x()) > 0)
             candidates.push_back({curr, ref.at<uchar>(curr.y(), curr.x())});
         // debug draw to see something
-        ref.at<uchar>(curr.y(), curr.x()) = 255;
         curr += delta;
         // 4 connected!
         if (curr_weak != curr[weak_index]) {
             Vector2d buff = curr;
             buff[weak_index] = curr_weak;
-            ref.at<uchar>(buff.y(), buff.x()) = 255;
+            if (ref.at<uchar>(buff.y(), buff.x()) > 0)
+                candidates.push_back({curr, ref.at<uchar>(buff.y(), buff.x())});
+            curr_weak = curr[weak_index];
         }
     }
-    assert(candidates.size() > 0);
 
     Vector2d best;
+
+
+    assert(candidates.size() > 0);
+
     double distance = std::numeric_limits<double>::max();
     for (auto& candy : candidates) {
         double dist = (candy.location - pos).norm();
@@ -331,6 +404,7 @@ Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
             best = candy.location;
         }
     }
+
     return best;
 }
 

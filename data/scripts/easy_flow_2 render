@@ -1,0 +1,2 @@
+#!/bin/bash
+/snap/bin/blender -b "../scenes/easy_flow_2.blend" -P "2cameras_render" -- front left 10

@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/flow_1/", 0),
-          data2("../data/renders/flow_1/", 1);
+imageData data1("../data/renders/easy_flow_2/", 0),
+          data2("../data/renders/easy_flow_2/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -104,6 +104,7 @@ struct Edge{
             indexA_ = index;
         else
         {
+            assert(indexB_ == -1);
             if (indexA_ < index)
                 indexB_ = index;
             else {
@@ -115,6 +116,43 @@ struct Edge{
 };
 
 int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& points, int index = 0);
+
+void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
+                 const Camera& cam1, const Camera& cam2, arteryGraph& graph,
+                 std::vector<specialPoint>& points) {
+    // greedily match endpoints
+    // while loop allows us to directly remove found matches
+    auto it1 = list1.begin();
+    while(it1 != list1.end()) {
+        auto it2 = list2.begin();
+        while(it2 != list2.end()) {
+            Vector3d position;
+            double distance = Camera::intersect(cam1.origin, cam1.ray(*it1).normalized(),
+                                                cam2.origin, cam2.ray(*it2).normalized(), position);
+            if (distance < 0.25) {
+                // we have a match, create node
+                arteryNode* node = new arteryNode(graph, position);
+                // add to list of Points
+                specialPoint point;
+                point.foundA = point.foundB = true;
+                point.node = node;
+                point.posA = *it1;
+                point.posB = *it2;
+                point.index = points.size();
+                node->index = points.size();
+                point.distance = distance;
+                points.push_back(point);
+                //remove already matched
+                it1 = list1.erase(it1);
+                it2 = list2.erase(it2);
+            }
+            else {
+                it2++;
+            }
+        }
+        it1++;
+    }
+}
 
 // builds a graph from matching image sequences
 // 1) find endpoints or junctions in both frames at same time
@@ -169,45 +207,37 @@ void buildGraph(imageData& data1, imageData& data2) {
             }
         }
 
-        // greedily match endpoints
-        // while loop allows us to directly remove found matches
-        auto it1 = ends1.begin();
-        while(it1 != ends1.end()) {
-            auto it2 = ends2.begin();
-            while(it2 != ends2.end()) {
-                Vector3d position;
-                double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(*it1).normalized(),
-                                                    data2.cam.origin, data2.cam.ray(*it2).normalized(), position);
-                if (distance < 0.25) {
-                    // we have a match, create node
-                    arteryNode* node = new arteryNode(graph, position);
-                    // add to list of Points
-                    specialPoint point;
-                    point.foundA = point.foundB = true;
-                    point.node = node;
-                    point.posA = *it1;
-                    point.posB = *it2;
-                    point.index = locatedPoints.size();
-                    node->index = locatedPoints.size();
-                    point.distance = distance;
-                    locatedPoints.push_back(point);
-                    //remove already matched
-                    it1 = ends1.erase(it1);
-                    it2 = ends2.erase(it2);
-                }
-                else {
-                    it2++;
-                }
-            }
-            it1++;
-        }
+        matchPoints(junctions1, junctions2, data1.cam, data2.cam,graph,locatedPoints);
+        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints);
+
+
 
         // 3) also create nodes for (and collect) unmatched points
+        for (auto& junction : junctions1)
+        {
+            specialPoint point;
+            point.foundA = true;
+            point.posA = junction;
+            point.index = locatedPoints.size();
+            point.type = pType::junction;
+            locatedPoints.push_back(point);
+        }
+        for (auto& junction : junctions2)
+        {
+            specialPoint point;
+            point.foundB = true;
+            point.posB = junction;
+            point.index = locatedPoints.size();
+            point.type = pType::junction;
+            locatedPoints.push_back(point);
+        }
+
         for (auto& end : ends1)
         {
             specialPoint point;
             point.foundA = true;
             point.posA = end;
+            point.index = locatedPoints.size();
             locatedPoints.push_back(point);
         }
         for (auto& end : ends2)
@@ -215,8 +245,10 @@ void buildGraph(imageData& data1, imageData& data2) {
             specialPoint point;
             point.foundB = true;
             point.posB = end;
+            point.index = locatedPoints.size();
             locatedPoints.push_back(point);
         }
+
 
         // 4) mark all points in the current buffer to find them fast
         // also disconnect skeleton at the points so that we can find the components
@@ -225,6 +257,7 @@ void buildGraph(imageData& data1, imageData& data2) {
             if (point.foundA){
                 data1.buffer[index].at<uchar>(point.posA.y(), point.posA.x()) = i;
                 data1.skeleton[index].at<uchar>(point.posA.y(), point.posA.x()) = 0;
+
             }
             if (point.foundB) {
                 data2.buffer[index].at<uchar>(point.posB.y(), point.posB.x()) = i;
@@ -238,7 +271,8 @@ void buildGraph(imageData& data1, imageData& data2) {
         data1.components[index].convertTo(data1.components[index], CV_8U);
         data2.components[index].convertTo(data2.components[index], CV_8U);
 
-debugWaitShow();
+        //if (index == 2)
+            debugWaitShow();
 
         // collect edges
         std::vector<Edge> edges_in_1(edge_count_1);
@@ -319,10 +353,11 @@ debugWaitShow();
             // this happens if we have a "real" endpoint, that will match multiple rounds
             if (pointCloseTo(data1.endpoints[index+1], 255, point.posA) != -1 &&
                 pointCloseTo(data2.endpoints[index+1], 255, point.posB) != -1) {
-                // we have a match
-                point.type = pType::endpoint;
             }
-            // either way update positions (if already matched to endpoints, will not change here!
+            else {
+                point.type = pType::path;
+            }
+            // either way update positions (if already matched to endpoints, will not change here!)
             pointCloseTo(data1.skeleton[index+1], 255, point.posA);
             pointCloseTo(data2.skeleton[index+1], 255, point.posB);
             // update node position
@@ -339,7 +374,8 @@ debugWaitShow();
 
         }
 
-        debugWaitShow();
+
+        //debugWaitShow();
 
         // trace and delete the whole "old" part of the graph!
         // is it necessary???
@@ -516,22 +552,27 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
             else {
                 if (!B.foundA) {
                     assert(B.foundB);
-                    B.posA = locate(data1.components[index],
-                                    data1.cam.projectLine(data2.cam.origin, data2.cam.ray(B.posB)), A.posA);
+                    // for debugging, first really actually draw this line in visualisation
+                    Eigen::Vector4d line = data1.cam.projectLine(data2.cam.origin, data2.cam.ray(B.posB));
+                    data1.renderLine(line, index);
+                    B.posA = locate(data1.components[index], line, A.posA);
                     B.foundA = true;
                 }
                 if (!B.foundB) {
                     assert(B.foundA);
-                    B.posB = locate(data2.components[index],
-                                    data2.cam.projectLine(data1.cam.origin, data1.cam.ray(B.posB)), A.posB);
+                    // for debugging, first really actually draw this line in visualisation
+                    Eigen::Vector4d line = data2.cam.projectLine(data1.cam.origin, data1.cam.ray(B.posA));
+                    data2.renderLine(line, index);
+                    B.posB = locate(data2.components[index], line, B.posB);
                     B.foundB = true;
                 }
                 assert(!B.node);
                 Vector3d position;
                 double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(B.posA).normalized(),
                                                     data2.cam.origin, data2.cam.ray(B.posB).normalized(), position);
-                assert (distance < 0.25);
+                assert (distance < 0.5);
                 B.node = A.node->addNode(position);
+                B.addedGraph = true;
             }
         }
         else {

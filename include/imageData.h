@@ -51,9 +51,9 @@ public:
 
     void renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index = 0);
 
-    void renderPoint(Vector2d point, int index = 0);
+    void renderPoint(Vector2d point, int label = -1, int index = 0);
 
-    void renderPoint(Vector3d point, int index = 0);
+    void renderPoint(Vector3d point, int label = -1, int index = 0);
 
     void Skeletonize(int index = 0, bool smooth = true, bool b_threshold = true, bool dilate = true,
                       bool b_thin = true, int threshold = 140, int max_threshold = 255, int dilation_size = 4);
@@ -73,14 +73,13 @@ public:
     }
 
     void drawGraph(arteryNode& node, int index = 0) {
-        renderPoint(node.position, index);
-
+        renderPoint(node.position, node.index, index);
         int i = 1;
         if (node.index == 0)
             i = 0;
 
         for (; i<node.degree; i++) {
-            renderLine(node.position, node.paths[i]->position);
+            renderLine(node.position, node.paths[i]->position, index);
             drawGraph(*node.paths[i], index);
         }
     }
