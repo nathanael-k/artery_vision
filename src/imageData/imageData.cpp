@@ -33,6 +33,15 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     endpoints.resize(size);
     skeleton.resize(size);
     buffer.resize(size);
+    components.resize(size);
+    for (int i = 0; i < size; i++) {
+        source[i].copyTo(visualisation[i]);
+        source[i].copyTo(endpoints[i]);
+        source[i].copyTo(skeleton[i]);
+        source[i].copyTo(buffer[i]);
+        source[i].copyTo(components[i]);
+        //source[i].convertTo(components[i],CV_16UC1);
+    }
 }
 
 void imageData::resetVisual(from where) {
@@ -57,6 +66,11 @@ void imageData::resetVisual(from where) {
     if (where == from::buffer) {
         if (!buffer[visual_frame].empty()) {
             curr_displayed = &buffer;
+        }
+    }
+    if (where == from::components) {
+        if (!components[visual_frame].empty()) {
+            curr_displayed = &components;
         }
     }
 }
@@ -115,7 +129,7 @@ void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
         //thin(target, smooth, acute_angle, destair); //about 2fps at 1k resolution
         cv::bitwise_not(skeleton[index], skeleton[index]);
         cv::ximgproc::thinning(skeleton[index], skeleton[index], cv::ximgproc::THINNING_GUOHALL); //about 6 fps at 1k resolution
-        cv::bitwise_not(skeleton[index], skeleton[index]);
+        //cv::bitwise_not(skeleton[index], skeleton[index]);
     }
 }
 
@@ -130,8 +144,8 @@ void imageData::Endpoints(int index) {
     // endpoints
     for (int i = 0; i<3; i++) {
         for (int j = 0; j<3; j++) {
-            cv::Mat kernel = (cv::Mat_<int>(3, 3) <<  1, 1, 1, 1,-1, 1, 1, 1, 1);
-            kernel.at<int>(i,j)= -1;
+            cv::Mat kernel = (cv::Mat_<int>(3, 3) <<  -1, -1, -1, -1,1, -1, -1, -1, -1);
+            kernel.at<int>(i,j)= 1;
             cv::morphologyEx(skeleton[index], buffer[index], cv::MORPH_HITMISS, kernel);
             endpoints[index] = endpoints[index] | buffer[index];
         }
@@ -140,25 +154,25 @@ void imageData::Endpoints(int index) {
     // prepare Kernels
     std::vector<cv::Mat> Kernels(16);
     // "arrows"
-    Kernels[0]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,-1,1,    1,1,-1);
-    Kernels[1]  = (cv::Mat_<int>(3,3) << 1,-1,1,  1,-1,-1,    -1,1,1);
-    Kernels[2]  = (cv::Mat_<int>(3,3) << -1,1,1,  1,-1,-1,    1,-1,1);
-    Kernels[3]  = (cv::Mat_<int>(3,3) << 1,1,-1,  -1,-1,1,    1,-1,1);
+    Kernels[0]  = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,-1,    -1,-1,1);
+    Kernels[1]  = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,1,    1,-1,-1);
+    Kernels[2]  = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,1,    -1,1,-1);
+    Kernels[3]  = (cv::Mat_<int>(3,3) << -1,-1,1,  1,1,-1,    -1,1,-1);
     // "crosses"
-    Kernels[4]  = (cv::Mat_<int>(3,3) << 1,1,1,  -1,-1,-1,    1,-1,1);
-    Kernels[5]  = (cv::Mat_<int>(3,3) << 1,-1,1,  1,-1,-1,    1,-1,1);
-    Kernels[6]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,-1,1,    1,-1,1);
-    Kernels[7]  = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,-1,-1,    1,1,1);
+    Kernels[4]  = (cv::Mat_<int>(3,3) << -1,-1,-1,  1,1,1,    -1,1,-1);
+    Kernels[5]  = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,1,    -1,1,-1);
+    Kernels[6]  = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,-1,    -1,1,-1);
+    Kernels[7]  = (cv::Mat_<int>(3,3) << -1,1,-1,  1,1,1,    -1,-1,-1);
     // "corners"
-    Kernels[8]  = (cv::Mat_<int>(3,3) << 1,1,-1,  1,-1,1,    -1,1,-1);
-    Kernels[9]  = (cv::Mat_<int>(3,3) << -1,1,1,  1,-1,1,    -1,1,-1);
-    Kernels[10] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,-1,1,    1,1,-1);
-    Kernels[11] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,-1,1,    -1,1,1);
+    Kernels[8]  = (cv::Mat_<int>(3,3) << -1,-1,1,  -1,1,-1,    1,-1,1);
+    Kernels[9]  = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,-1,    1,-1,1);
+    Kernels[10] = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    -1,-1,1);
+    Kernels[11] = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    1,-1,-1);
     // "rooks"
-    Kernels[12] = (cv::Mat_<int>(3,3) << -1,1,-1,  1,-1,1,    1,-1,1);
-    Kernels[13] = (cv::Mat_<int>(3,3) << -1,1,1,  1,-1,-1,    -1,1,1);
-    Kernels[14] = (cv::Mat_<int>(3,3) << 1,-1,1,  1,-1,1,    -1,1,-1);
-    Kernels[15] = (cv::Mat_<int>(3,3) << 1,1,-1,  -1,-1,1,    1,1,-1);
+    Kernels[12] = (cv::Mat_<int>(3,3) << 1,-1,1,  -1,1,-1,    -1,1,-1);
+    Kernels[13] = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,1,    1,-1,-1);
+    Kernels[14] = (cv::Mat_<int>(3,3) << -1,1,-1,  -1,1,-1,    1,-1,1);
+    Kernels[15] = (cv::Mat_<int>(3,3) << -1,-1,1,  1,1,-1,    -1,-1,1);
 
     // splits
     for (int i = 0; i<16; i++) {
@@ -270,5 +284,53 @@ void exploreOne(std::vector<candidate> &candidates, arteryGraph &graph) {
     candy.reference.skeleton[candy.index].at<uchar>(candy.refPixel.y(), candy.refPixel.x()) = 100;
 
     trace(&candy.lead, &candy.reference, candy.leadPixel, candy.refPixel, graph, node, candidates);
+}
+
+Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
+
+    struct candidate{Vector2d location; int component;};
+    std::vector<candidate> candidates;
+    int weak_index;
+
+    // we basically draw a line, but make sure that it is 4 connect or we could miss a component!
+    Vector2d start(line[0], line[1]);
+    Vector2d end(line[2], line[3]);
+    Vector2d delta = end - start;
+    if (abs(delta.x()) > abs(delta.y())) {
+        delta /= abs(delta.x());
+        weak_index = 0;
+    }
+    else{
+        delta /= abs(delta.y());
+        weak_index = 1;
+    }
+
+    Vector2d curr = start;
+    int curr_weak = curr[weak_index];
+
+    for (int i = 0; i<ref.cols; i++) {
+        if (ref.at<uchar>(curr.y(), curr.x()) > 0)
+            candidates.push_back({curr, ref.at<uchar>(curr.y(), curr.x())});
+        // debug draw to see something
+        ref.at<uchar>(curr.y(), curr.x()) = 255;
+        curr += delta;
+        // 4 connected!
+        if (curr_weak != curr[weak_index]) {
+            Vector2d buff = curr;
+            buff[weak_index] = curr_weak;
+            ref.at<uchar>(buff.y(), buff.x()) = 255;
+        }
+    }
+    assert(candidates.size() > 0);
+
+    Vector2d best;
+    double distance = std::numeric_limits<double>::max();
+    for (auto& candy : candidates) {
+        double dist = (candy.location - pos).norm();
+        if (dist < distance) {
+            best = candy.location;
+        }
+    }
+    return best;
 }
 

@@ -128,7 +128,7 @@ bool const Camera::onEdge(const Vector2d &point) {
 // return value is x1, y1, x2, y2
 Eigen::Vector4d const Camera::projectLine(const Vector3d &_origin, const Vector3d &_direction) {
 
-    Eigen::ParametrizedLine<double, 3> line = Eigen::ParametrizedLine<double, 3>(_origin, _direction);
+    Eigen::ParametrizedLine<double, 3> line = Eigen::ParametrizedLine<double, 3>(_origin, _direction.normalized());
 
     // construct planes
     Eigen::Hyperplane<double, 3> leftPlane = Eigen::Hyperplane<double, 3>(
