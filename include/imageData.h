@@ -41,6 +41,8 @@ public:
     bool pointRdy = false;
     bool executeRdy = false;
 
+    arteryGraph graph;
+
     Camera cam;
 
     imageData(std::string metaFolder, int index);
@@ -82,6 +84,23 @@ public:
             renderLine(node.position, node.paths[i]->position, index);
             drawGraph(*node.paths[i], index);
         }
+    }
+
+    void write_to_file(arteryNode& node, std::ofstream& handle) {
+        handle << node.position.x() << " " << node.position.y() << " " << node.position.z() << '\n';
+        int i = 1;
+        if (node.index == 0)
+            i = 0;
+
+        for (; i<node.degree; i++) {
+            write_to_file(*node.paths[i], handle);
+        }
+    }
+
+    void write_to_file(std::string& file_name) {
+        std::ofstream file;
+        file.open( "graph.txt" );
+        write_to_file(*graph.root, file);
     }
 };
 

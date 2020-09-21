@@ -134,6 +134,26 @@ void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
         //cv::bitwise_not(skeleton[index], skeleton[index]);
     }
 
+    // remove small stubs ( https://en.wikipedia.org/wiki/Pruning_(morphology) )
+    std::vector<cv::Mat> ThinningKernels(8);
+    ThinningKernels[0] = (cv::Mat_<int>(3,3) << 0,-1,-1,  1,1,-1,    0,-1,-1);
+    ThinningKernels[1] = (cv::Mat_<int>(3,3) << 0,1,0,  -1,1,-1,    -1,-1,-1);
+    ThinningKernels[2] = (cv::Mat_<int>(3,3) << -1,-1,0,  -1,1,1,    -1,-1,0);
+    ThinningKernels[3] = (cv::Mat_<int>(3,3) << -1,-1,-1,  -1,1,-1,    0,1,0);
+
+    ThinningKernels[4] = (cv::Mat_<int>(3,3) << 1,-1,-1,  -1,1,-1,    -1,-1,-1);
+    ThinningKernels[5] = (cv::Mat_<int>(3,3) << -1,-1,1,  -1,1,-1,    -1,-1,-1);
+    ThinningKernels[6] = (cv::Mat_<int>(3,3) << -1,-1,-1,  -1,1,-1,    1,-1,-1);
+    ThinningKernels[7] = (cv::Mat_<int>(3,3) << -1,-1,-1,  -1,1,-1,    -1,-1,1);
+
+    // thin 10 times
+    for (int i = 0; i<10; i++) {
+        for (int ker = 0; ker<8; ker++) {
+            cv::morphologyEx(skeleton[index],buffer[index], cv::MORPH_HITMISS, ThinningKernels[ker]);
+            skeleton[index] = skeleton[index] - (buffer[index]);
+        }
+    }
+
     // now we have a skeleton, but we can still have T shapes and other problems, so lets remove some more pixels
 
     // for T shapes, we just have to remove the pixel at the top of the T in the middle

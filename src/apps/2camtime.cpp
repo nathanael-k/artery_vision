@@ -168,7 +168,7 @@ void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
 // paint all known matches in the buffer layer of the next time step (at correct location)
 void buildGraph(imageData& data1, imageData& data2) {
 
-    arteryGraph graph;
+    arteryGraph& graph = data1.graph;
     std::vector<specialPoint> locatedPoints;
     int finishedPoints = 0;
 
@@ -373,8 +373,8 @@ void buildGraph(imageData& data1, imageData& data2) {
             data2.skeleton[index+1].at<uchar>(point.posB.y(), point.posB.x()) = 0;
 
         }
-
-
+        std::string egal;
+        data1.write_to_file(egal );
         //debugWaitShow();
 
         // trace and delete the whole "old" part of the graph!
