@@ -1,0 +1,4 @@
+import bpy
+for line in open(""esktop/gits/artery_vision/data/scenes/graph.txt"):
+    x, y, z = line.split(",")
+    bpy.ops.mesh.primitive_ico_sphere_add(size=0.25, location=(int(x),int(y),int(z))) 
