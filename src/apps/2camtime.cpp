@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/flow_1/", 0),
-          data2("../data/renders/flow_1/", 1);
+imageData data1("../data/renders/easy_flow_2/", 0),
+          data2("../data/renders/easy_flow_2/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -577,7 +577,7 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
                 Vector3d position;
                 double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(B.posA).normalized(),
                                                     data2.cam.origin, data2.cam.ray(B.posB).normalized(), position);
-                assert (distance < 0.5);
+                assert (distance < 30);
                 B.node = A.node->addNode(position);
                 B.node->index = edge.indexB_;
                 B.addedGraph = true;
