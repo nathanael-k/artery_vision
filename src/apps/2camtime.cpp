@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/easy_flow_2/", 0),
-          data2("../data/renders/easy_flow_2/", 1);
+imageData data1("../data/renders/flow_1/", 0),
+          data2("../data/renders/flow_1/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -119,7 +119,7 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
 
 void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
                  const Camera& cam1, const Camera& cam2, arteryGraph& graph,
-                 std::vector<specialPoint>& points) {
+                 std::vector<specialPoint>& points, pType type) {
     // greedily match endpoints
     // while loop allows us to directly remove found matches
     auto it1 = list1.begin();
@@ -141,6 +141,7 @@ void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
                 point.index = points.size();
                 node->index = points.size();
                 point.distance = distance;
+                point.type = type;
                 points.push_back(point);
                 //remove already matched
                 it1 = list1.erase(it1);
@@ -207,9 +208,7 @@ void buildGraph(imageData& data1, imageData& data2) {
             }
         }
 
-        matchPoints(junctions1, junctions2, data1.cam, data2.cam,graph,locatedPoints);
-        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints);
-
+        matchPoints(junctions1, junctions2, data1.cam, data2.cam,graph,locatedPoints, pType::junction);
 
 
         // 3) also create nodes for (and collect) unmatched points
@@ -232,6 +231,8 @@ void buildGraph(imageData& data1, imageData& data2) {
             locatedPoints.push_back(point);
         }
 
+        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints, pType::endpoint);
+
         for (auto& end : ends1)
         {
             specialPoint point;
@@ -252,6 +253,7 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         // 4) mark all points in the current buffer to find them fast
         // also disconnect skeleton at the points so that we can find the components
+        // TODO: check if needed!
         for (int i = finishedPoints; i < locatedPoints.size(); i++) {
             auto& point = locatedPoints[i];
             if (point.foundA){
@@ -266,13 +268,14 @@ void buildGraph(imageData& data1, imageData& data2) {
         }
 
         // mark/find connected components of skeleton
+        // TODO: remove and put to preprocessing (how to handle endge_count?)
         int edge_count_1 = cv::connectedComponents(data1.skeleton[index], data1.components[index], 8, CV_16U) -1;
         int edge_count_2 = cv::connectedComponents(data2.skeleton[index], data2.components[index], 8, CV_16U) -1;
         data1.components[index].convertTo(data1.components[index], CV_8U);
         data2.components[index].convertTo(data2.components[index], CV_8U);
 
-        //if (index == 2)
-            debugWaitShow();
+        //if (index == 1)
+          //  debugWaitShow();
 
         // collect edges
         std::vector<Edge> edges_in_1(edge_count_1);
@@ -309,7 +312,9 @@ void buildGraph(imageData& data1, imageData& data2) {
                                 edges_in_2[edge-1].add_index(point.index);
                             }
                         }
-            assert(found_connections_cam1 <= max_connections &&
+            // this is only relevant for new points!
+            if (!point.addedGraph)
+                assert(found_connections_cam1 <= max_connections &&
                     found_connections_cam2 <= max_connections);
 
         }
@@ -320,7 +325,6 @@ void buildGraph(imageData& data1, imageData& data2) {
             assert(locatedPoints[0].foundA && locatedPoints[0].foundB);
             locatedPoints[0].addedGraph = true;
             graph.root = locatedPoints[0].node;
-            graph.root->enddraw = false;
             finishedPoints = 1;
         }
 
@@ -340,6 +344,9 @@ void buildGraph(imageData& data1, imageData& data2) {
         data2.source[index].copyTo(data2.visualisation[index]);
         data1.drawGraph(*graph.root, index);
         data2.drawGraph(*graph.root, index);
+
+        //if (index == 1)
+            debugWaitShow();
 
         // when all are matched, correlate those matches to next endpoints layer / skeleton
         // junctions are expected to stay, however if a path appears again its now a (final) endpoint
@@ -572,6 +579,7 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
                                                     data2.cam.origin, data2.cam.ray(B.posB).normalized(), position);
                 assert (distance < 0.5);
                 B.node = A.node->addNode(position);
+                B.node->index = edge.indexB_;
                 B.addedGraph = true;
             }
         }
