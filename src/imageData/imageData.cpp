@@ -414,7 +414,6 @@ Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
 
     Vector2d best;
 
-
     assert(candidates.size() > 0);
 
     double distance = std::numeric_limits<double>::max();

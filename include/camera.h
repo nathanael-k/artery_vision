@@ -50,7 +50,7 @@ public:
     Vector2d projectPoint(const Vector3d& point) const;
 
     // returns true if the pixel is on the edge of the frustrum
-    bool const onEdge(const Vector2d& point);
+    bool const onEdge(const Eigen::Vector2i& point);
 
     // returns the image coordinates of the line segment projected onto the imageplane
     // return value is x1, y1, x2, y2

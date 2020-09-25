@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/easy_flow_2/", 0),
-          data2("../data/renders/easy_flow_2/", 1);
+imageData data1("../data/renders/easy_flow_3/", 0),
+          data2("../data/renders/easy_flow_3/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -70,6 +70,7 @@ int main( int argc, char** argv )
 
 // to classify type of special points
 enum class pType {
+    newpoint,
     endpoint,
     path,
     junction,
@@ -78,10 +79,12 @@ enum class pType {
 
 struct specialPoint {
     int index;
-    pType type = pType::endpoint;
+    pType type = pType::newpoint;
     Vector2d posA;
     Vector2d posB;
     double distance;
+    bool originA = false;
+    bool originB = false;
     bool foundA = false;
     bool foundB = false;
     arteryNode* node = nullptr;
@@ -91,15 +94,24 @@ struct specialPoint {
 bool trace(imageData& data1, imageData& data2, int index, specialPoint& point,
           std::vector<specialPoint>& specialPoints);
 
-int pointCloseTo(const cv::Mat& img, uchar value, Vector2d& position);
+int pointCloseTo(const cv::Mat& img, cv::Mat& vis, uchar value, Vector2d& position);
 
 struct Edge{
     // indexA < indexB
     int indexA_ = -1;
     int indexB_ = -1;
-    bool added_to_graph;
+
+    bool valid() {
+        assert (indexA_ <= indexB_);
+        return (indexA_ >= 0 && indexB_ >= 0);
+    }
 
     void add_index(int index) {
+        // already added
+        if (index == indexA_ || index == indexB_)
+            return;
+
+
         if (indexA_ == -1)
             indexA_ = index;
         else
@@ -120,38 +132,47 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
 void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
                  const Camera& cam1, const Camera& cam2, arteryGraph& graph,
                  std::vector<specialPoint>& points, pType type) {
-    // greedily match endpoints
-    // while loop allows us to directly remove found matches
-    auto it1 = list1.begin();
-    while(it1 != list1.end()) {
-        auto it2 = list2.begin();
-        while(it2 != list2.end()) {
-            Vector3d position;
-            double distance = Camera::intersect(cam1.origin, cam1.ray(*it1).normalized(),
-                                                cam2.origin, cam2.ray(*it2).normalized(), position);
-            if (distance < 0.25) {
-                // we have a match, create node
-                arteryNode* node = new arteryNode(graph, position);
-                // add to list of Points
-                specialPoint point;
-                point.foundA = point.foundB = true;
-                point.node = node;
-                point.posA = *it1;
-                point.posB = *it2;
-                point.index = points.size();
-                node->index = points.size();
-                point.distance = distance;
-                point.type = type;
-                points.push_back(point);
-                //remove already matched
-                it1 = list1.erase(it1);
-                it2 = list2.erase(it2);
-            }
-            else {
-                it2++;
+
+    // find best match and remove, until the match is over the threshold
+    while(true) {
+        double shortest_distance = std::numeric_limits<double>::max();
+        Vector3d best_position;
+        auto best_pos1 = list1.begin();
+        auto best_pos2 = list2.begin();;
+        for (auto it1 = list1.begin(); it1 != list1.end(); it1++) {
+            for (auto it2 = list2.begin(); it2 != list2.end(); it2++) {
+                Vector3d position;
+                double distance = Camera::intersect(cam1.origin, cam1.ray(*it1).normalized(),
+                                                    cam2.origin, cam2.ray(*it2).normalized(), position);
+                if (distance < shortest_distance) {
+                    shortest_distance = distance;
+                    best_position = position;
+                    best_pos1 = it1;
+                    best_pos2 = it2;
+                }
             }
         }
-        it1++;
+        if (shortest_distance > 0.5)
+            return;
+        else {
+            // we have a match, create node
+            arteryNode *node = new arteryNode(graph, best_position);
+            // add to list of Points
+            specialPoint point;
+            point.foundA = point.foundB = true;
+            point.originA = point.originB = true;
+            point.node = node;
+            point.posA = *best_pos1;
+            point.posB = *best_pos2;
+            point.index = points.size();
+            node->index = points.size();
+            point.distance = shortest_distance;
+            point.type = type;
+            points.push_back(point);
+            //remove already matched
+            list1.erase(best_pos1);
+            list2.erase(best_pos2);
+        }
     }
 }
 
@@ -216,6 +237,7 @@ void buildGraph(imageData& data1, imageData& data2) {
         {
             specialPoint point;
             point.foundA = true;
+            point.originA = true;
             point.posA = junction;
             point.index = locatedPoints.size();
             point.type = pType::junction;
@@ -225,18 +247,20 @@ void buildGraph(imageData& data1, imageData& data2) {
         {
             specialPoint point;
             point.foundB = true;
+            point.originB = true;
             point.posB = junction;
             point.index = locatedPoints.size();
             point.type = pType::junction;
             locatedPoints.push_back(point);
         }
 
-        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints, pType::endpoint);
+        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints, pType::newpoint);
 
         for (auto& end : ends1)
         {
             specialPoint point;
             point.foundA = true;
+            point.originA = true;
             point.posA = end;
             point.index = locatedPoints.size();
             locatedPoints.push_back(point);
@@ -245,37 +269,39 @@ void buildGraph(imageData& data1, imageData& data2) {
         {
             specialPoint point;
             point.foundB = true;
+            point.originB = true;
             point.posB = end;
             point.index = locatedPoints.size();
             locatedPoints.push_back(point);
         }
-
 
         // 4) mark all points in the current buffer to find them fast
         // also disconnect skeleton at the points so that we can find the components
         // TODO: check if needed!
         for (int i = finishedPoints; i < locatedPoints.size(); i++) {
             auto& point = locatedPoints[i];
-            if (point.foundA){
+            if (point.foundA) {
                 data1.buffer[index].at<uchar>(point.posA.y(), point.posA.x()) = i;
-                data1.skeleton[index].at<uchar>(point.posA.y(), point.posA.x()) = 0;
 
+                if (point.originA)
+                data1.skeleton[index].at<uchar>(point.posA.y(), point.posA.x()) = 0;
             }
+
             if (point.foundB) {
                 data2.buffer[index].at<uchar>(point.posB.y(), point.posB.x()) = i;
+
+                if (point.originB)
                 data2.skeleton[index].at<uchar>(point.posB.y(), point.posB.x()) = 0;
             }
+
         }
 
         // mark/find connected components of skeleton
-        // TODO: remove and put to preprocessing (how to handle endge_count?)
+        // TODO: remove and put to preprocessing (how to handle edge_count?)
         int edge_count_1 = cv::connectedComponents(data1.skeleton[index], data1.components[index], 8, CV_16U) -1;
         int edge_count_2 = cv::connectedComponents(data2.skeleton[index], data2.components[index], 8, CV_16U) -1;
         data1.components[index].convertTo(data1.components[index], CV_8U);
         data2.components[index].convertTo(data2.components[index], CV_8U);
-
-        //if (index == 1)
-          //  debugWaitShow();
 
         // collect edges
         std::vector<Edge> edges_in_1(edge_count_1);
@@ -289,7 +315,7 @@ void buildGraph(imageData& data1, imageData& data2) {
             int found_connections_cam2 = 0;
 
             // work on camera 1 first
-            if (point.foundA)
+            if (point.originA)
             for (int i = -1; i <= 1; i++)
                 for (int j = -1; j <= 1; j++)
                     if (i != 0 || j != 0) {
@@ -301,7 +327,7 @@ void buildGraph(imageData& data1, imageData& data2) {
                         }
                     }
             // work on camera 2
-            if (point.foundB)
+            if (point.originB)
                 for (int i = -1; i <= 1; i++)
                     for (int j = -1; j <= 1; j++)
                         if (i != 0 || j != 0) {
@@ -328,11 +354,47 @@ void buildGraph(imageData& data1, imageData& data2) {
             finishedPoints = 1;
         }
 
-        int sum = 100;
-        while (sum > 0) {
+
+
+        // first process edges that connect junctions to old nodes
+        std::vector<Edge> edges_to_process_old;
+        for (auto& edge : edges_in_1)
+            if (edge.valid() && edge.indexA_ < finishedPoints && locatedPoints[edge.indexB_].type == pType::junction)
+                edges_to_process_old.push_back(edge);
+        for (auto& edge : edges_in_2)
+            if (edge.valid() && edge.indexA_ < finishedPoints && locatedPoints[edge.indexB_].type == pType::junction)
+                edges_to_process_old.push_back(edge);
+        {
+            int edges_left = processEdges(edges_to_process_old, locatedPoints, index);
+            assert(edges_left == 0);
+        }
+
+        // then process edges that connect new junctions to new junctions (strange case)
+        std::vector<Edge> edges_to_process_junc;
+        for (auto& edge : edges_in_1)
+            if (edge.valid() && edge.indexA_ >= finishedPoints &&
+                locatedPoints[edge.indexA_].type == pType::junction &&
+                locatedPoints[edge.indexB_].type == pType::junction)
+                edges_to_process_junc.push_back(edge);
+        for (auto& edge : edges_in_2)
+            if (edge.valid() && edge.indexA_ >= finishedPoints &&
+                locatedPoints[edge.indexA_].type == pType::junction &&
+                locatedPoints[edge.indexB_].type == pType::junction)
+                edges_to_process_junc.push_back(edge);
+        {
+            int edges_left = processEdges(edges_to_process_junc, locatedPoints, index);
+            assert(edges_left == 0);
+        }
+
+
+
+        // then process all other edges
+        while (true) {
             int edges_1_left = processEdges(edges_in_1, locatedPoints, index);
             int edges_2_left = processEdges(edges_in_2, locatedPoints, index);
-            sum = edges_1_left + edges_2_left;
+            int sum = edges_1_left + edges_2_left;
+            if (sum == 0)
+                break;
         }
 
         // at this moment, all Points should have been added to the graph
@@ -340,14 +402,15 @@ void buildGraph(imageData& data1, imageData& data2) {
             assert(point.addedGraph);
 
         // draw graph into visualisation to check it
-        data1.source[index].copyTo(data1.visualisation[index]);
-        data2.source[index].copyTo(data2.visualisation[index]);
+        //data1.source[index].copyTo(data1.visualisation[index]);
+        //data2.source[index].copyTo(data2.visualisation[index]);
         data1.drawGraph(*graph.root, index);
         data2.drawGraph(*graph.root, index);
 
-        //if (index == 1)
-            debugWaitShow();
+        //if (index == 5)
+        debugWaitShow();
 
+        if (index != data1.size-1) {
         // when all are matched, correlate those matches to next endpoints layer / skeleton
         // junctions are expected to stay, however if a path appears again its now a (final) endpoint
         // for a match: delete the respective pixel in the endpoints layer
@@ -356,17 +419,43 @@ void buildGraph(imageData& data1, imageData& data2) {
         cv::bitwise_not(data2.endpoints[index+1], data2.buffer[index+1]);
         for (int i = 0; i < locatedPoints.size(); i++) {
             auto& point = locatedPoints[i];
-            // try to point close to and update endpoints
-            // this happens if we have a "real" endpoint, that will match multiple rounds
-            if (pointCloseTo(data1.endpoints[index+1], 255, point.posA) != -1 &&
-                pointCloseTo(data2.endpoints[index+1], 255, point.posB) != -1) {
+
+            if (point.type == pType::newpoint ) {
+                // if it matches to another endpoint, it will stay, so change the type
+                // way too fancy trick with short circuit evaluation
+                bool check1 = point.originA && (pointCloseTo(data1.endpoints[index+1], data1.visualisation[index+1], 255, point.posA) != -1);
+                bool check2 = point.originB && (pointCloseTo(data2.endpoints[index+1], data2.visualisation[index+1], 255, point.posB) != -1);
+                if (check1 || check2) {
+                    point.type = pType::endpoint;
+                }
+                else {
+                    point.type = pType::path;
+                    // match the path to the skeleton (be sure to match!)
+                    assert (pointCloseTo(data1.skeleton[index + 1], data1.visualisation[index + 1], 255, point.posA) >
+                            -1);
+                    assert (pointCloseTo(data2.skeleton[index + 1], data2.visualisation[index + 1], 255, point.posB) >
+                            -1);
+                    }
             }
-            else {
-                point.type = pType::path;
+
+            else if (point.type == pType::endpoint) {
+                // a discovered and verified endpoint MUST stay an endpoint!
+                if (point.originA) assert(pointCloseTo(data1.endpoints[index+1], data1.visualisation[index+1], 255, point.posA) != -1);
+                if (point.originB) assert(pointCloseTo(data2.endpoints[index+1], data2.visualisation[index+1], 255, point.posB) != -1);
             }
-            // either way update positions (if already matched to endpoints, will not change here!)
-            pointCloseTo(data1.skeleton[index+1], 255, point.posA);
-            pointCloseTo(data2.skeleton[index+1], 255, point.posB);
+
+            else if (point.type == pType::junction) {
+                // a junction MUST still be a junction! if we are unable to match, something has seriously gone wrong.
+                if (point.originA) assert(pointCloseTo(data1.endpoints[index+1], data1.visualisation[index+1], 128, point.posA) != -1);
+                if (point.originB) assert(pointCloseTo(data2.endpoints[index+1], data2.visualisation[index+1], 128, point.posB) != -1);
+            }
+
+            else if (point.type == pType::path) {
+                // match the path to the skeleton (be sure to match!)
+                assert (pointCloseTo(data1.skeleton[index+1], data1.visualisation[index+1], 255, point.posA) > -1);
+                assert (pointCloseTo(data2.skeleton[index+1], data2.visualisation[index+1], 255, point.posB) > -1);
+            }
+
             // update node position
             Camera::intersect(data1.cam, point.posA, data2.cam, point.posB, point.node->position);
             // remove on endpoints layer
@@ -376,10 +465,15 @@ void buildGraph(imageData& data1, imageData& data2) {
             data1.buffer[index+1].at<uchar>(point.posA.y(), point.posA.x()) = i;
             data2.buffer[index+1].at<uchar>(point.posB.y(), point.posB.x()) = i;
             // remove from next skeleton
-            data1.skeleton[index+1].at<uchar>(point.posA.y(), point.posA.x()) = 0;
-            data2.skeleton[index+1].at<uchar>(point.posB.y(), point.posB.x()) = 0;
-
+            if (point.originA)
+                data1.skeleton[index+1].at<uchar>(point.posA.y(), point.posA.x()) = 0;
+            if (point.originB)
+                data2.skeleton[index+1].at<uchar>(point.posB.y(), point.posB.x()) = 0;
         }
+        }
+        if (index == data1.size-1)
+            debugWaitShow();
+
         std::string egal;
         data1.write_to_file(egal );
         //debugWaitShow();
@@ -393,17 +487,19 @@ void buildGraph(imageData& data1, imageData& data2) {
 }
 
 // finds the closest point with specific value close to position. modifies position and returns how many pixels difference we had
-int pointCloseTo(const cv::Mat& img, uchar value, Vector2d& position) {
+int pointCloseTo(const cv::Mat& img, cv::Mat& vis, uchar value, Vector2d& position) {
 
     for (int k = 0; k<10; k++) {
         for (int i = -k; i <= k; i++) {
             if (i == k || i == -k) {
                 for (int j = -k; j <= k; j++) {
                     Vector2d location = position + Vector2d(i, j);
+
                     if (img.at<uchar>(location.y(), location.x()) == value) {
                         position = location;
                         return std::max(std::abs(i),std::abs(j));
                     }
+                    vis.at<uchar>(location.y(), location.x()) = 66;
                 }
             }
             else {
@@ -412,11 +508,13 @@ int pointCloseTo(const cv::Mat& img, uchar value, Vector2d& position) {
                     position = location;
                     return std::max(std::abs(i),std::abs(k));
                 }
+                vis.at<uchar>(location.y(), location.x()) = 66;
                 location = position + Vector2d(i, +k);
                 if (img.at<uchar>(location.y(), location.x()) == value) {
                     position = location;
                     return std::max(std::abs(i),std::abs(k));
                 }
+                vis.at<uchar>(location.y(), location.x()) = 66;
             }
         }
     }
@@ -537,9 +635,9 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
     int open_edges = 0;
 
     // in an ideal world, all edges would now connect two locatedPoints
-    for (auto& edge : edges){
+    for (auto& edge : edges)
         // both sides connected of the edge
-        assert(edge.indexA_ != -1 && edge.indexB_ != -1);
+        if(edge.indexA_ != -1 && edge.indexB_ != -1) {
         // we only need to do something if one of the nodes is not yet in the graph
         specialPoint& A = points[edge.indexA_];
         specialPoint& B = points[edge.indexB_];
@@ -570,14 +668,14 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
                     // for debugging, first really actually draw this line in visualisation
                     Eigen::Vector4d line = data2.cam.projectLine(data1.cam.origin, data1.cam.ray(B.posA));
                     data2.renderLine(line, index);
-                    B.posB = locate(data2.components[index], line, B.posB);
+                    B.posB = locate(data2.components[index], line, A.posB);
                     B.foundB = true;
                 }
                 assert(!B.node);
                 Vector3d position;
                 double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(B.posA).normalized(),
                                                     data2.cam.origin, data2.cam.ray(B.posB).normalized(), position);
-                assert (distance < 30);
+                assert (distance < 1);
                 B.node = A.node->addNode(position);
                 B.node->index = edge.indexB_;
                 B.addedGraph = true;
@@ -586,7 +684,6 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
         else {
             // both special points associated with this edge were not yet added to the graph
             open_edges ++;
-
         }
     }
     return open_edges;

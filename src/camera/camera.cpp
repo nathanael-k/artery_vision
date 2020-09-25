@@ -117,11 +117,14 @@ Vector2d Camera::projectPoint(const Vector3d &point) const{
     return ret;
 }
 
-bool const Camera::onEdge(const Vector2d &point) {
-    return (abs(point.x()) < 0.00001 || abs(point.x() - resolution) < 0.00001) &&
-           (point.y() > -1 && point.y() < resolution + 1) ||
-           (abs(point.y()) < 0.00001 || abs(point.y() - resolution) < 0.00001) &&
-           (point.x() > -1 && point.x() < resolution + 1);
+bool const Camera::onEdge(const Eigen::Vector2i& point) {
+
+    // the point lies on the edge of the frustrum if one dimension is 0 or resolution-1 and the other in range
+
+    return ((point.x() == 0 || point.x() == resolution-1) &&
+            (point.y() >= 0 && point.y() <= resolution-1) ||
+            (point.y() == 0 || point.y() == resolution-1) &&
+            (point.x() >= 0 && point.x() <= resolution-1));
 }
 
 // returns the image coordinates of the line segment projected onto the imageplane
@@ -132,13 +135,13 @@ Eigen::Vector4d const Camera::projectLine(const Vector3d &_origin, const Vector3
 
     // construct planes
     Eigen::Hyperplane<double, 3> leftPlane = Eigen::Hyperplane<double, 3>(
-            topLeftPosition.cross(ray(Vector2d(0, resolution))), origin);
+            topLeftPosition.cross(ray(Vector2d(0, resolution-1))), origin);
     Eigen::Hyperplane<double, 3> topPlane = Eigen::Hyperplane<double, 3>(
-            topLeftPosition.cross(ray(Vector2d(resolution, 0))), origin);
+            topLeftPosition.cross(ray(Vector2d(resolution-1, 0))), origin);
     Eigen::Hyperplane<double, 3> bottomPlane = Eigen::Hyperplane<double, 3>(
-            ray(Vector2d(resolution, resolution)).cross(ray(Vector2d(0, resolution))), origin);
+            ray(Vector2d(resolution-1, resolution-1)).cross(ray(Vector2d(0, resolution-1))), origin);
     Eigen::Hyperplane<double, 3> rightPlane = Eigen::Hyperplane<double, 3>(
-            ray(Vector2d(resolution, resolution)).cross(ray(Vector2d(resolution, 0))), origin);
+            ray(Vector2d(resolution-1, resolution-1)).cross(ray(Vector2d(resolution-1, 0))), origin);
 
     // intersections are correct!
     Vector3d left = line.intersectionPoint(leftPlane);
@@ -148,13 +151,13 @@ Eigen::Vector4d const Camera::projectLine(const Vector3d &_origin, const Vector3
 
 
     // construct projections of line - plane crossings
-    Vector2d points[4];
-    points[0] = projectPoint(line.intersectionPoint(leftPlane));
-    points[1] = projectPoint(line.intersectionPoint(topPlane));
-    points[2] = projectPoint(line.intersectionPoint(rightPlane));
-    points[3] = projectPoint(line.intersectionPoint(bottomPlane));
+    Eigen::Vector2i points[4];
+    points[0] = projectPoint(line.intersectionPoint(leftPlane)).cast<int>();
+    points[1] = projectPoint(line.intersectionPoint(topPlane)).cast<int>();
+    points[2] = projectPoint(line.intersectionPoint(rightPlane)).cast<int>();
+    points[3] = projectPoint(line.intersectionPoint(bottomPlane)).cast<int>();
 
-    Vector2d buffer[4];
+    Eigen::Vector2i buffer[4];
     int count = 0;
 
     for (int i = 0; i < 4; i++) {
@@ -165,13 +168,18 @@ Eigen::Vector4d const Camera::projectLine(const Vector3d &_origin, const Vector3
     }
 
     // would be strange if we found more than 2 valid points
-    assert(count <= 2);
+    assert(count == 2);
+
+
 
     Eigen::Vector4d res;
     if (count == 2)
         res = Eigen::Vector4d(buffer[0].x(), buffer[0].y(), buffer[1].x(), buffer[1].y());
     if (count < 2)
-        res = Eigen::Vector4d(0, 0, resolution, resolution);
+        res = Eigen::Vector4d(0, 0, resolution-1, resolution-1);
+
+    assert(res[0] >= 0 && res[1] >= 0 && res[2] >= 0 && res[3] >= 0);
+    assert(res[0] <= resolution-1 && res[1] <= resolution-1 && res[2] <= resolution-1 && res[3] <= resolution-1);
     return res;
 }
 
