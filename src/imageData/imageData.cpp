@@ -31,12 +31,14 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     }
     visualisation.resize(size);
     endpoints.resize(size);
+    new_skeleton.resize(size);
     skeleton.resize(size);
     buffer.resize(size);
     components.resize(size);
     for (int i = 0; i < size; i++) {
         source[i].copyTo(visualisation[i]);
         source[i].copyTo(endpoints[i]);
+        source[i].copyTo(new_skeleton[i]);
         source[i].copyTo(skeleton[i]);
         source[i].copyTo(buffer[i]);
         source[i].copyTo(components[i]);
@@ -51,6 +53,11 @@ void imageData::resetVisual(from where) {
     if (where == from::skeleton) {
         if (!skeleton[visual_frame].empty()) {
             curr_displayed = &skeleton;
+        }
+    }
+    if (where == from::new_skeleton) {
+        if (!new_skeleton[visual_frame].empty()) {
+            curr_displayed = &new_skeleton;
         }
     }
     if (where == from::visualisation) {
@@ -375,11 +382,27 @@ void exploreOne(std::vector<candidate> &candidates, arteryGraph &graph) {
     trace(&candy.lead, &candy.reference, candy.leadPixel, candy.refPixel, graph, node, candidates);
 }
 
-Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
+Vector2d double_locate(cv::Mat &prio, cv::Mat &backup, const cv::Mat &components, const Eigen::Vector4d &line, const Vector2d pos,
+                       const Camera& cam_ref, const Vector2d& pixel_ref, const Camera& cam_new) {
 
-    struct candidate{Vector2d location; int component;};
+    Vector2d res = locate(prio, components, line, pos, cam_ref, pixel_ref, cam_new);
+    if (res == Vector2d(-1,-1)) {
+        res = locate(backup, components, line,pos, cam_ref, pixel_ref, cam_new);
+    }
+    assert(res != Vector2d(-1,-1));
+    return res;
+}
+
+Vector2d locate(cv::Mat &ref, const cv::Mat &components, const Eigen::Vector4d &line, const Vector2d pos,
+                const Camera& cam_ref, const Vector2d& pixel_ref, const Camera& cam_new) {
+
+    struct candidate{Vector2d location; int component; double distance;};
     std::vector<candidate> candidates;
     int weak_index;
+    Vector3d dummy;
+
+    // test multiple lines
+    // for
 
     // we basically draw a line, but make sure that it is 4 connect or we could miss a component!
     Vector2d start(line[0], line[1]);
@@ -394,33 +417,60 @@ Vector2d locate(cv::Mat &ref, const Eigen::Vector4d &line, const Vector2d pos) {
         weak_index = 1;
     }
 
-    Vector2d curr = start;
-    int curr_weak = curr[weak_index];
+    Vector2d side = delta.normalized();
 
-    for (int i = 0; i<ref.cols; i++) {
-        if (ref.at<uchar>(curr.y(), curr.x()) > 0)
-            candidates.push_back({curr, ref.at<uchar>(curr.y(), curr.x())});
-        // debug draw to see something
-        curr += delta;
-        // 4 connected!
-        if (curr_weak != curr[weak_index]) {
-            Vector2d buff = curr;
-            buff[weak_index] = curr_weak;
-            if (ref.at<uchar>(buff.y(), buff.x()) > 0)
-                candidates.push_back({curr, ref.at<uchar>(buff.y(), buff.x())});
-            curr_weak = curr[weak_index];
+
+    for (int off = -3; off<=3; off++) {
+
+        Vector2d curr = start;
+        curr.y() += off * side.x()*15;
+        int curr_weak = curr[weak_index];
+
+        for (int i = 0; i < ref.cols; i++) {
+            if (ref.at<uchar>(curr.y(), curr.x()) > 200)
+                candidates.push_back({curr, components.at<uchar>(curr.y(), curr.x()),
+                        Camera::intersect(cam_ref, pixel_ref, cam_new, Vector2d(curr.x(), curr.y()), dummy)});
+            ref.at<uchar>(curr.y(), curr.x()) = 99;
+            // debug draw to see something
+            curr += delta;
+            // 4 connected!
+            if (curr_weak != curr[weak_index]) {
+                Vector2d buff = curr;
+                buff[weak_index] = curr_weak;
+                if (ref.at<uchar>(buff.y(), buff.x()) > 200)
+                    candidates.push_back({curr, components.at<uchar>(buff.y(), buff.x()),
+                            Camera::intersect(cam_ref, pixel_ref, cam_new, Vector2d(buff.x(), buff.y()), dummy)});
+                curr_weak = curr[weak_index];
+                ref.at<uchar>(buff.y(), buff.x()) = 100;
+            }
         }
     }
 
     Vector2d best;
 
-    assert(candidates.size() > 0);
+    if(candidates.size() == 0)
+        return Vector2d(-1,-1);
 
     double distance = std::numeric_limits<double>::max();
+    int best_component;
     for (auto& candy : candidates) {
         double dist = (candy.location - pos).norm();
         if (dist < distance) {
+            best_component = candy.component;
+            distance = dist;
+        }
+    }
+
+    // on the closest component, find the best match
+    distance = std::numeric_limits<double>::max();
+    for (auto& candy : candidates) {
+        if (candy.component == best_component) {
+
+
+        if (candy.distance < distance) {
             best = candy.location;
+            distance = candy.distance;
+        }
         }
     }
 

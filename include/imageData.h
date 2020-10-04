@@ -20,6 +20,7 @@ using Eigen::Vector2d;
 enum class from {
     source,
     skeleton,
+    new_skeleton,
     components,
     visualisation,
     endpoints,
@@ -31,7 +32,7 @@ public:
     int size;
     int visual_frame = 0;
 
-    std::vector<cv::Mat> source, skeleton, components, visualisation, endpoints, buffer;
+    std::vector<cv::Mat> source, skeleton, new_skeleton, components, visualisation, endpoints, buffer;
     std::vector<cv::Mat>* curr_displayed = &source;
 
     // what is currently selected / set
@@ -63,6 +64,7 @@ public:
     void SkeletonizeAll() {
         for (int i = 0; i<size; i++) {
             Skeletonize(i);
+            skeleton[i].copyTo(new_skeleton[i]);
         }
     }
 
@@ -132,8 +134,11 @@ void trace(imageData* lead, imageData* reference, Vector2d leadPixel, Vector2d r
 
 void exploreOne(std::vector<candidate>& candidates, arteryGraph& graph);
 
+
+Vector2d double_locate(cv::Mat &prio, cv::Mat &backup, const cv::Mat& components, const Eigen::Vector4d &line, const Vector2d pos, const Camera& cam_ref, const Vector2d& pixel_ref, const Camera& cam_new);
+
 // finds a missing point in reference, by checking the line coordinates for components
 // if there are multiple matches... take the closest one?
-Vector2d locate(cv::Mat& ref, const Eigen::Vector4d& line, const Vector2d pos);
+Vector2d locate(cv::Mat& ref, const cv::Mat& components, const Eigen::Vector4d& line, const Vector2d pos, const Camera& cam_ref, const Vector2d& pixel_ref, const Camera& cam_new);
 
 #endif //ARTERY_VISION_IMAGEDATA_H
