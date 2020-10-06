@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/easy_flow_2/", 0),
-          data2("../data/renders/easy_flow_2/", 1);
+imageData data1("../data/renders/easy_flow_3/", 0),
+          data2("../data/renders/easy_flow_3/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -91,7 +91,7 @@ namespace point {
 struct specialPoint {
     // index in the list of all located points
     int index;
-    // number in the tree hierachy
+    // number in the tree hierarchy
     int number = -1;
 
     point::Type type = point::Type::endpoint;
@@ -110,8 +110,8 @@ struct specialPoint {
     int lines_1[3];
     int lines_2[3];
 
-    int n_lines_1;
-    int n_lines_2;
+    int n_lines_1 = 0;
+    int n_lines_2 = 0;
 
     arteryNode* node = nullptr;
 };
@@ -134,6 +134,19 @@ struct Edge{
     bool valid() {
         //assert (indexA_ <= indexB_);
         return (indexA_ >= 0 && indexB_ >= 0);
+    }
+
+    int connects_to(int me) {
+        assert(valid());
+        int a = indexA_;
+        int b = indexB_;
+        if (me == a) {
+            return b;
+        }
+        if (me == b) {
+            return a;
+        }
+        assert(false);
     }
 
     void add_index(int index) {
@@ -477,7 +490,6 @@ void buildGraph(imageData& data1, imageData& data2) {
             edge.length = (locatedPoints[edge.indexA_].pos_2 - locatedPoints[edge.indexB_].pos_2).norm();
         }
 
-        debugWaitShow();
 
         // only first round, add root
         if (index == 0) {
@@ -522,6 +534,80 @@ void buildGraph(imageData& data1, imageData& data2) {
                 }
             }}
 
+        // we can check each new junctions what it connects to
+        for (auto& point : locatedPoints) {
+            if (point.status == point::Status::fresh && point.type == point::Type::junction) {
+
+                // TODO: if two junctions see each other, they must be pseudo junctions
+
+                int old_points[3];
+                int new_points[3];
+
+                int found_old_points = 0;
+                int found_new_points = 0;
+
+                int* lines;
+                if (point.origin_1) {
+                    lines = point.lines_1;
+                    assert (point.n_lines_1 == 3);
+                }
+                else {
+                    lines = point.lines_2;
+                    assert (point.n_lines_2 == 3);
+                }
+
+                int neighbours[3];
+                for (int i = 0; i<3; i++) {
+                    if (point.origin_1) neighbours[i] = edges_in_1[lines[i]].connects_to(point.index);
+                    else neighbours[i] = edges_in_2[lines[i]].connects_to(point.index);
+                }
+
+                for (int i = 0; i<3; i++) {
+                    if (locatedPoints[neighbours[i]].status == point::Status::old) {
+                        old_points[found_old_points] = neighbours[i];
+                        found_old_points++;
+
+                        // mark that edge as found
+                        Edge found; found.add_index(point.index); found.add_index(neighbours[i]);
+                        if (point.origin_1) {
+                            for (auto &former_edge : former_edges_in_1) {
+                                if (found == former_edge) {
+                                    former_edge.found_in_next_frame = true;
+                                    break;
+                                }
+                            }
+                            edges_in_1[lines[i]].found_in_old_frame = true;
+                        }
+                        if (point.origin_2) {
+                            for (auto &former_edge : former_edges_in_2) {
+                                if (found == former_edge) {
+                                    former_edge.found_in_next_frame = true;
+                                    break;
+                                }
+                            }
+                            edges_in_2[lines[i]].found_in_old_frame = true;
+                        }
+
+                    } else {
+                        new_points[found_new_points] = lines[i];
+                        found_new_points++;
+                    }
+                }
+
+                assert(found_new_points <3);
+                assert(found_old_points <3);
+
+                // if we connect to two old points, we must be a pseudo junction
+                if (found_old_points == 2) {
+                    assert(!point.origin_1 || !point.origin_2);
+                    if (point.origin_1) point.type = point::Type::pseudo_junctionA;
+                    else point.type = point::Type::pseudo_junctionB;
+                }
+            }
+        }
+
+        // TODO: first, connect pseudo junctions to the frontier, then mark that junction also as a frontier
+        // TODO: if you have a pseudojunction with only two old connections, and a new one: the closest frontier pseudoJunction is his connection!
 
         // TODO: all is set to trace with A*: ideally an implementation that will allow reuse
         // returns std::vector<int> nodes - intermediate nodes we pass thru on our way
@@ -637,7 +723,6 @@ void buildGraph(imageData& data1, imageData& data2) {
 
 
         //if (index >= 17)
-            debugWaitShow();
 
 
         if (index != data1.size-1) {
@@ -739,6 +824,8 @@ void buildGraph(imageData& data1, imageData& data2) {
         former_edges_in_1 = edges_in_1;
         former_edges_in_2 = edges_in_2;
     }
+
+    debugWaitShow();
 }
 
 // finds the closest point with specific value close to position. modifies position and returns how many pixels difference we had
