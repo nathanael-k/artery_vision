@@ -17,7 +17,7 @@ public:
     const float radius;
     bool optimized = false;
     bool enddraw = true;
-    int index = -1;
+    const int index;
 
     arteryNode* junctions[MAX_DEGREE] = {nullptr};
     arteryNode* paths[MAX_DEGREE] = {nullptr};

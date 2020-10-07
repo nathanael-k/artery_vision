@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/easy_flow_3/", 0),
-          data2("../data/renders/easy_flow_3/", 1);
+imageData data1("../data/renders/flow_1/", 0),
+          data2("../data/renders/flow_1/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -242,17 +242,14 @@ void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
         if (shortest_distance > distance_limit)
             return;
         else {
-            // we have a match, create node
-            arteryNode *node = new arteryNode(graph, best_position);
+
             // add to list of Points
             specialPoint point;
             point.found_1 = point.found_2 = true;
             point.origin_1 = point.origin_2 = true;
-            point.node = node;
             point.pos_1 = *best_pos1;
             point.pos_2 = *best_pos2;
             point.index = points.size();
-            node->index = points.size();
             point.distance = shortest_distance;
             point.type = type;
             points.push_back(point);
@@ -334,6 +331,12 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         matchPoints(junctions1, junctions2, data1.cam, data2.cam,graph,locatedPoints, point::Type::junction);
 
+        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints, point::Type::endpoint);
+
+        // also match still unmatched ends to junctions
+        matchPoints(ends1, junctions2, data1.cam, data2.cam,graph,locatedPoints, point::Type::pseudo_junctionB);
+        matchPoints(junctions1, ends2, data1.cam, data2.cam,graph,locatedPoints, point::Type::pseudo_junctionA);
+
         //matchPoints(ends1, pseudo_junctions2, data1.cam, data2.cam,graph,locatedPoints, point::Type::pseudo_junctionB, 3);
         //matchPoints(pseudo_junctions1, ends2, data1.cam, data2.cam,graph,locatedPoints, point::Type::pseudo_junctionA, 3);
 
@@ -382,7 +385,7 @@ void buildGraph(imageData& data1, imageData& data2) {
             locatedPoints.push_back(point);
         }
 */
-        matchPoints(ends1, ends2, data1.cam, data2.cam,graph,locatedPoints, point::Type::endpoint);
+
 
         for (auto& end : ends1)
         {
@@ -437,6 +440,7 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         for(auto& point : locatedPoints) {
             // find out what edge this point is connected to
+            // if (point.index == 18) debugWaitShow();
             int max_connections = 1;
             if (point.type == point::Type::path)     max_connections = 2;
             if (point.type == point::Type::junction || point.type == point::Type::pseudo_junctionA || point.type == point::Type::pseudo_junctionB)
@@ -494,11 +498,17 @@ void buildGraph(imageData& data1, imageData& data2) {
         // only first round, add root
         if (index == 0) {
             // right now we need at least one matched node, this will be the root node
-            assert(locatedPoints[0].found_1 && locatedPoints[0].found_2);
-            locatedPoints[0].number = addedPoints;
+            auto& point = locatedPoints[0];
+            assert(point.found_1 && point.found_2);
+            point.number = addedPoints;
+            Vector3d position;
+            double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(point.pos_1).normalized(),
+                                                data2.cam.origin, data2.cam.ray(point.pos_2).normalized(), position);
+            point.node = new arteryNode(graph,position);
             addedPoints++;
-            locatedPoints[0].status;
+            point.status = point::Status::frontier;
             graph.root = locatedPoints[0].node;
+            graph.size = 1;
             finishedPoints = 1;
         }
 
@@ -510,7 +520,8 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         if (index == 0)
             frontier.push_back(locatedPoints[0]);
-        assert(frontier.size() > 0);
+
+        //assert(frontier.size() > 0);
 
         // TODO: add clever edge processing here! (not needed right now)
         if (index != 0) {
@@ -594,7 +605,7 @@ void buildGraph(imageData& data1, imageData& data2) {
                     }
                 }
 
-                assert(found_new_points <3);
+                //assert(found_new_points <3);
                 assert(found_old_points <3);
 
                 // if we connect to two old points, we must be a pseudo junction
@@ -648,7 +659,10 @@ void buildGraph(imageData& data1, imageData& data2) {
             suppress(data1.components[index], data1.new_skeleton[index], suppress_1);
             suppress(data2.components[index], data2.new_skeleton[index], suppress_2);
 
+
+
         // first process edges that connect pseudo junctions to the frontier
+        for (int i = 0; i < 3; i++)
         {
             std::vector<Edge> edges_to_process_frontier;
             for (auto& edge : edges_in_1)
@@ -657,6 +671,7 @@ void buildGraph(imageData& data1, imageData& data2) {
                     auto &pointB = locatedPoints[edge.indexB_];
                     if (pointA.status == point::Status::frontier && pointB.type == point::Type::pseudo_junctionA) {
                         edges_to_process_frontier.push_back(edge);
+                        pointB.status = point::Status::frontier;
                     }
                 }
             for (auto& edge : edges_in_2)
@@ -665,13 +680,114 @@ void buildGraph(imageData& data1, imageData& data2) {
                     auto &pointB = locatedPoints[edge.indexB_];
                     if (pointA.status == point::Status::frontier && pointB.type == point::Type::pseudo_junctionB) {
                         edges_to_process_frontier.push_back(edge);
+                        pointB.status = point::Status::frontier;
                     }
                 }
             int edges_left = processEdges(edges_to_process_frontier, locatedPoints, index, addedPoints);
             assert(edges_left == 0);
         }
 
-        // first process edges that connect junctions to old nodes
+        // we can start by desperately trying to fix any pseudo junction, since they should always come in pairs.
+        // right now we just match any new pseudo junction to the next best pseudo junction that is still open
+        for (auto& pointB : locatedPoints) {
+            if ((pointB.type == point::Type::pseudo_junctionA || pointB.type == point::Type::pseudo_junctionB)
+                && pointB.status == point::Status::fresh) {
+                // lets find a already connected partner
+                for (auto& pointA : locatedPoints) {
+                    if ((pointA.type == point::Type::pseudo_junctionA || pointA.type == point::Type::pseudo_junctionB)
+                        && pointA.status == point::Status::frontier) {
+                        if (!pointB.found_1) {
+                            assert(pointB.found_2);
+                            // for debugging, first really actually draw this line in visualisation
+                            Eigen::Vector4d line = data1.cam.projectLine(data2.cam.origin, data2.cam.ray(pointB.pos_2));
+                            data1.renderLine(line, index);
+                            pointB.pos_1 = double_locate(data1.new_skeleton[index], data1.skeleton[index], data1.components[index], line, pointA.pos_1,
+                                                    data2.cam, pointB.pos_2, data1.cam);
+                            if (pointB.pos_1 == Vector2d(-1, -1))
+                                debugWaitShow();
+                            pointB.found_1 = true;
+                        }
+                        if (!pointB.found_2) {
+                            assert(pointB.found_1);
+                            // for debugging, first really actually draw this line in visualisation
+                            Eigen::Vector4d line = data2.cam.projectLine(data1.cam.origin, data1.cam.ray(pointB.pos_1));
+                            data2.renderLine(line, index);
+                            pointB.pos_2 = double_locate(data2.new_skeleton[index], data2.skeleton[index], data2.components[index], line, pointA.pos_2,
+                                                    data1.cam, pointB.pos_1, data2.cam);
+                            if (pointB.pos_2 == Vector2d(-1, -1))
+                                debugWaitShow();
+                            pointB.found_2 = true;
+                        }
+                        assert(!pointB.node);
+                        Vector3d position;
+                        double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(pointB.pos_1).normalized(),
+                                                            data2.cam.origin, data2.cam.ray(pointB.pos_2).normalized(), position);
+                        assert (distance < 2);
+                        pointB.node = pointA.node->addNode(position);
+                        pointB.number = addedPoints;
+                        addedPoints++;
+
+                        // these matched junctions are now old
+                        pointA.status = point::Status::old;
+                        pointB.status = point::Status::old;
+                    }
+
+                }
+            }
+        }
+
+        // if we still have a pseudo junction that is not connected, then we should maybe connect it to the closest frontier?
+        // a way to do this would be to locate it as usual, check what edge we hit, remove that edge, and add the relevant edges again?
+        for (auto& point : locatedPoints) if(point.type == point::Type::pseudo_junctionA && point.status == point::Status::fresh) {
+                Eigen::Vector4d line = data2.cam.projectLine(data1.cam.origin, data1.cam.ray(point.pos_1));
+                point.pos_2 = double_locate(data2.new_skeleton[index], data2.skeleton[index], data2.components[index], line, {data2.cam.resolution/2,data2.cam.resolution/2},
+                                        data1.cam, point.pos_1, data2.cam);
+                if (point.pos_2 == Vector2d(-1, -1))
+                    debugWaitShow();
+                point.found_2 = true;
+
+                int edge_2 = data2.components[index].at<uchar>(point.pos_2.y(), point.pos_2.x());
+                Edge& edge = edges_in_2[edge_2-1];
+                Edge new_1; new_1.add_index(point.index); new_1.add_index(edge.indexB_);
+                Edge new_2; new_2.add_index(point.index); new_2.add_index(edge.indexA_);
+
+                edges_in_2[edge_2-1] = new_1;
+                edges_in_2.push_back(new_2);
+        }
+
+        for (auto& point : locatedPoints) if(point.type == point::Type::pseudo_junctionB && point.status == point::Status::fresh) {
+                Eigen::Vector4d line = data1.cam.projectLine(data2.cam.origin, data2.cam.ray(point.pos_2));
+                point.pos_1 = double_locate(data1.new_skeleton[index], data1.skeleton[index], data1.components[index], line, {data1.cam.resolution/2,data1.cam.resolution/2},
+                                            data2.cam, point.pos_2, data1.cam);
+                if (point.pos_1 == Vector2d(-1, -1))
+                    debugWaitShow();
+                point.found_1 = true;
+
+                int edge_1 = data1.components[index].at<uchar>(point.pos_1.y(), point.pos_1.x());
+                Edge& edge = edges_in_1[edge_1-1];
+                Edge new_1; new_1.add_index(point.index); new_1.add_index(edge.indexB_);
+                Edge new_2; new_2.add_index(point.index); new_2.add_index(edge.indexA_);
+
+                edges_in_1[edge_1-1] = new_1;
+                edges_in_1.push_back(new_2);
+            }
+
+        {
+            //prioritize edges from pseudo junctions
+            std::vector<Edge> edges_to_process_pseudojunctions;
+            for (auto& edge : edges_in_1)
+                if (edge.valid() && edge.indexA_ < finishedPoints && locatedPoints[edge.indexB_].type == point::Type::pseudo_junctionB)
+                    edges_to_process_pseudojunctions.push_back(edge);
+            for (auto& edge : edges_in_2)
+                if (edge.valid() && edge.indexA_ < finishedPoints && locatedPoints[edge.indexB_].type == point::Type::pseudo_junctionA)
+                    edges_to_process_pseudojunctions.push_back(edge);
+            {
+                int edges_left = processEdges(edges_to_process_pseudojunctions, locatedPoints, index, addedPoints);
+                assert(edges_left == 0);
+            }
+        }
+
+        // then process edges that connect junctions to old nodes
         std::vector<Edge> edges_to_process_old;
         for (auto& edge : edges_in_1)
             if (edge.valid() && edge.indexA_ < finishedPoints && locatedPoints[edge.indexB_].type == point::Type::junction)
@@ -722,9 +838,6 @@ void buildGraph(imageData& data1, imageData& data2) {
         data2.drawGraph(*graph.root, index);
 
 
-        //if (index >= 17)
-
-
         if (index != data1.size-1) {
         // when all are matched, correlate those matches to next endpoints layer / skeleton
         // junctions are expected to stay, however if a path appears again its now a (final) endpoint
@@ -736,8 +849,7 @@ void buildGraph(imageData& data1, imageData& data2) {
             auto& point = locatedPoints[i];
 
 
-            if (point.status == point::Status::fresh) {
-                if (point.type == point::Type::endpoint) {
+            if ((point.status == point::Status::fresh || point.status == point::Status::frontier) && (point.type == point::Type::endpoint)) {
                 // if it matches to another endpoint, it will stay, so change the type
                 // ATTENTION: way too fancy trick with short circuit evaluation
                 bool check1 = point.origin_1 && (pointCloseTo(data1.endpoints[index + 1], data1.visualisation[index + 1], 255, point.pos_1) != -1);
@@ -757,9 +869,11 @@ void buildGraph(imageData& data1, imageData& data2) {
                             -1);
                     }
             }
-            else if (point.type == point::Type::pseudo_junctionA || point.type == point::Type::pseudo_junctionB ) {
+            // if we have pseudo junctions that are not yet old, they are frontiers. we manually set them old if they match
+            else if ((point.type == point::Type::pseudo_junctionA || point.type == point::Type::pseudo_junctionB) &&
+                point.status != point::Status::old) {
                     point.status = point::Status::frontier;
-            }
+
             }
             else // only fresh endpoints can become frontiers, the rest just becomes old
                 point.status = point::Status::old;
@@ -983,16 +1097,21 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
         // we only need to do something if one of the nodes is not yet in the graph
         specialPoint& A = points[edge.indexA_];
         specialPoint& B = points[edge.indexB_];
-        if (A.number >= 0 && B.number >= 0){}
+        if (A.node != nullptr && B.node != nullptr){}
             // do nothing
-        else if (A.number >= 0) {
-            assert(A.found_1 && A.found_2 && A.node && B.number == -1);
+        else if (A.node != nullptr) {
+            assert(A.found_1 && A.found_2 && A.node && B.node == nullptr);
 
             // we know the point B is not yet added to the graph
             // if it is already found on both cameras, we have good location and can add to the graph
             if (B.found_1 && B.found_2) {
-                assert(B.node);
-                A.node->graph.connectNodes(A.node, B.node);
+                assert(!B.node && A.node);
+                Vector3d position;
+                double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(B.pos_1).normalized(),
+                                                    data2.cam.origin, data2.cam.ray(B.pos_2).normalized(), position);
+                assert (distance < 2);
+
+                B.node = A.node->addNode(position);
                 B.number = added_edges;
                 added_edges++;
             }
@@ -1026,22 +1145,27 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
                                                     data2.cam.origin, data2.cam.ray(B.pos_2).normalized(), position);
                 assert (distance < 2);
                 B.node = A.node->addNode(position);
-                B.node->index = added_edges;
                 B.number = added_edges;
                 added_edges++;
             }
         }
-        else if (B.number >= 0) {
+        else if (B.node) {
             assert(B.found_1 && B.found_2 && B.node && A.number == -1);
 
             // we know the point B is not yet added to the graph
             // if it is already found on both cameras, we have good location and can add to the graph
             if (A.found_1 && A.found_2) {
-                assert(A.node);
-                B.node->graph.connectNodes(B.node, A.node);
+                assert(!A.node && B.node);
+                Vector3d position;
+                double distance = Camera::intersect(data1.cam.origin, data1.cam.ray(A.pos_1).normalized(),
+                                                    data2.cam.origin, data2.cam.ray(A.pos_2).normalized(), position);
+                assert (distance < 2);
+
+                A.node = B.node->addNode(position);
                 A.number = added_edges;
                 added_edges++;
             }
+
                 // point is only on one side yet
             else {
                 if (!A.found_1) {
@@ -1072,7 +1196,6 @@ int processEdges(const std::vector<Edge>& edges, std::vector<specialPoint>& poin
                                                     data2.cam.origin, data2.cam.ray(A.pos_2).normalized(), position);
                 assert (distance < 2);
                 A.node = B.node->addNode(position);
-                A.node->index = added_edges;
                 A.number = added_edges;
                 added_edges++;
             }

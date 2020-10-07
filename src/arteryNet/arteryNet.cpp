@@ -3,7 +3,7 @@
 #include <assert.h>
 
 arteryNode::arteryNode(arteryGraph& _graph, const Eigen::Vector3d& posit, float rad)
-                    : graph(_graph), position(posit), radius(rad) {
+                    : graph(_graph), position(posit), radius(rad), index(graph.size) {
     graph.nEnd++;
     graph.size++;
 }
@@ -13,6 +13,11 @@ arteryNode* arteryNode::addNode(const Eigen::Vector3d& posit, float radius) {
     assert(degree < MAX_DEGREE);
 
     arteryNode* node = new arteryNode(graph, posit, radius);
+
+
+    if (node->index == 21)
+        int a = 5;
+
 
     // connections
     paths[degree] = node;
