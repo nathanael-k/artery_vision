@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/flow_1/", 0),
-          data2("../data/renders/flow_1/", 1);
+imageData data1("../data/renders/easy_flow_3/", 0),
+          data2("../data/renders/easy_flow_3/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
