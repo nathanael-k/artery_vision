@@ -83,21 +83,20 @@ void imageData::resetVisual(from where) {
 }
 
 void imageData::renderLine(const Eigen::Vector4d& line, int index) {
+    assert(index < visualisation.size());
     cv::Point A(line[0], line[1]);
     cv::Point B(line[2], line[3]);
     cv::line(visualisation[index], A, B, CV_RGB(100,100,100));
 }
 
-
 void imageData::renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index) {
+    assert(index < visualisation.size());
     Vector2d a,b;
     a = cam.projectPoint(begin); b = cam.projectPoint(end);
     cv::Point A(a[0],a[1]);
     cv::Point B(b[0],b[1]);
     cv::line(visualisation[index], A, B, CV_RGB(255,100,100));
 }
-
-
 
 void imageData::renderPoint(Vector2d point, int label, int index) {
     cv::Point P(point[0], point[1]);
@@ -110,9 +109,9 @@ void imageData::renderPoint(Vector3d point, int label, int index) {
     renderPoint(cam.projectPoint(point), label, index);
 }
 
-void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
-                            bool dilate, bool b_thin, int threshold, int max_threshold,
-                            int dilation_size) {
+void imageData::prepareLayers(int index, bool smooth, bool b_threshold,
+                              bool dilate, bool b_thin, int threshold, int max_threshold,
+                              int dilation_size) {
 
     source[index].copyTo(skeleton[index]);
 
@@ -192,7 +191,6 @@ void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
     Points[2] = cv::Point(2,1);
     Points[3] = cv::Point(1,2);
 
-
     endpoints[index] = cv::Mat::zeros(skeleton[index].cols, skeleton[index].rows, skeleton[index].type());
     // cache points to add
     for (int i = 0; i<4; i++) {
@@ -213,11 +211,15 @@ void imageData::Skeletonize(int index, bool smooth, bool b_threshold,
     endpoints[index].at<uchar>(max-1,max-1) = 0;
     // add prepared points
     skeleton[index] = skeleton[index] + endpoints[index];
+
+    // copy to new_skeleton
+    skeleton[index].copyTo(new_skeleton[index]);
+    // prepare endpoints
+    prepareEndpoints(index);
+
 }
 
-
-
-void imageData::Endpoints(int index) {
+void imageData::prepareEndpoints(int index) {
     assert(!skeleton[index].empty());
 
     endpoints[index] = cv::Mat::zeros(skeleton[index].cols, skeleton[index].rows, skeleton[index].type());
@@ -276,6 +278,7 @@ void imageData::Endpoints(int index) {
             endpoints[index] = endpoints[index] | (buffer[index] / 2);
     }
 }
+
 
 
 

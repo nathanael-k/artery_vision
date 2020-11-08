@@ -40,7 +40,7 @@ set(CMAKE_FIND_DEBUG_MODE TRUE)
 #find_library(LIBCAMERA camera lib REQUIRED)
 
 add_executable(artery_vision src/main.cpp)
-add_executable(2camtime src/apps/2camtime.cpp)
+add_executable(2camtime src/apps/2camtime.cpp src/imageStereoAnalyzer/image_stereo_analyzer.cpp include/image_stereo_analyzer.h)
 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
 target_link_libraries(test_camera ${OpenCV_LIBS} camera Eigen3::Eigen)

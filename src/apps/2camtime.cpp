@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/real_brain/", 0),
-          data2("../data/renders/real_brain/", 1);
+imageData data1("../data/renders/heart/", 0),
+          data2("../data/renders/heart/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -50,12 +50,8 @@ int main( int argc, char** argv )
     cv::createTrackbar( "Visualisation Source:", "Control", &what, 6, changeVisual);
 
     // prepare skeletons
-    data1.SkeletonizeAll();
-    data2.SkeletonizeAll();
-
-    // prepare endpoints
-    data1.EndpointsAll();
-    data2.EndpointsAll();
+    data1.prepareAllLayers();
+    data2.prepareAllLayers();
 
     buildGraph(data1, data2);
 
@@ -236,6 +232,20 @@ void matchPoints(std::list<Vector2d>& list1, std::list<Vector2d>& list2,
                     best_position = position;
                     best_pos1 = it1;
                     best_pos2 = it2;
+                    // try a backwards approach, if we found a good match, maybe we can find a better one in
+                    // reverse! (solves the problem if we have two points in one image, that both match to the same
+                    // point in the second image: we prefer to take the best of those two!
+                    for (auto it1_alt = list1.begin(); it1_alt != list1.end(); it1_alt++) {
+                        Vector3d position;
+                        double distance = Camera::intersect(cam1.origin, cam1.ray(*it1_alt).normalized(),
+                                                            cam2.origin, cam2.ray(*it2).normalized(), position);
+                        if (distance < shortest_distance) {
+                            shortest_distance = distance;
+                            best_position = position;
+                            best_pos1 = it1_alt;
+                            best_pos2 = it2;
+                        }
+                    }
                 }
             }
         }
@@ -684,6 +694,8 @@ void buildGraph(imageData& data1, imageData& data2) {
             int edges_left = processEdges(edges_to_process_frontier, locatedPoints, index, addedPoints);
             assert(edges_left == 0);
         }
+
+        debugWaitShow();
 
         // we can start by desperately trying to fix any pseudo junction, since they should always come in pairs.
         // right now we just match any new pseudo junction to the next best pseudo junction that is still open

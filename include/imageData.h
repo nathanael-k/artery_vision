@@ -17,6 +17,7 @@
 using Eigen::Vector3d;
 using Eigen::Vector2d;
 
+// enum to define different data to display
 enum class from {
     source,
     skeleton,
@@ -26,6 +27,7 @@ enum class from {
     endpoints,
     buffer
 };
+
 
 class imageData {
 public:
@@ -46,36 +48,13 @@ public:
 
     Camera cam;
 
+    // constructor: loads images from folder based on the meta file
+    // prepares all the different image layers by copying from the source
     imageData(std::string metaFolder, int index);
 
-    void resetVisual(from where = from::source);
+    // #### methods for visualisation
 
-    void renderLine(const Eigen::Vector4d& line, int index = 0);
-
-    void renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index = 0);
-
-    void renderPoint(Vector2d point, int label = -1, int index = 0);
-
-    void renderPoint(Vector3d point, int label = -1, int index = 0);
-
-    void Skeletonize(int index = 0, bool smooth = true, bool b_threshold = true, bool dilate = true,
-                      bool b_thin = true, int threshold = 140, int max_threshold = 255, int dilation_size = 4);
-
-    void SkeletonizeAll() {
-        for (int i = 0; i<size; i++) {
-            Skeletonize(i);
-            skeleton[i].copyTo(new_skeleton[i]);
-        }
-    }
-
-    void Endpoints(int index = 0);
-
-    void EndpointsAll() {
-        for (int i = 0; i<size; i++) {
-            Endpoints(i);
-        }
-    }
-
+    // starting from node, draw everything connected to it on layer index
     void drawGraph(arteryNode& node, int index = 0) {
         renderPoint(node.position, node.index, index);
         int i = 1;
@@ -88,6 +67,46 @@ public:
         }
     }
 
+    // changes the pointer that defines what should currently be displayed
+    void resetVisual(from where = from::source);
+
+    // draw a line on "visualization" in image coordinates, at the specified index (image in sequence)
+    void renderLine(const Eigen::Vector4d& line, int index = 0);
+
+    // draw a line on "visualization" in 3d coordinates, at the specified index
+    void renderLine(const Eigen::Vector3d& begin, const Eigen::Vector3d& end, int index = 0);
+
+    // draw a circle in image coordinates, write label if label is >= 0
+    void renderPoint(Vector2d point, int label = -1, int index = 0);
+
+    // draw a circle in 3d coordinates, write label if label is >= 0
+    void renderPoint(Vector3d point, int label = -1, int index = 0);
+
+    // #### methods for data preparation
+
+    // prepare all the image layers for the specified index for further processing
+    // source:          initial image, does not get touched
+    // skeleton:        skeletonized version, black background and white skeleton
+    // new_skeleton:    initially a copy of the skeleton, but "old" edges will be suppressed during recognition
+    //                  will then show only the skeleton of new parts in the image
+    // endpoints:       shows endpoints as 255 and junctions as 127, everything else as 0
+    // components:      during processing all edges will become numbered
+    // buffer:          ??? used behind the scenes sometimes
+    // visualisation:   initially a copy of the source, but we draw onto it as soon as we have progress
+    void prepareLayers(int index = 0, bool smooth = true, bool b_threshold = true, bool dilate = true,
+                       bool b_thin = true, int threshold = 140, int max_threshold = 255, int dilation_size = 4);
+
+    // call prepareLayers for all images in the sequence
+    void prepareAllLayers() {
+        for (int i = 0; i<size; i++) {
+            prepareLayers(i);
+        }
+    }
+
+    // makes sure that our endpoint buffer is as required (paint it) at index
+    void prepareEndpoints(int index = 0);
+
+    // write everything connected to that node to a file for further processing
     void write_to_file(arteryNode& node, std::ofstream& handle) {
         handle << node.position.x() << " " << node.position.y() << " " << node.position.z() << '\n';
         int i = 1;
@@ -99,6 +118,7 @@ public:
         }
     }
 
+    // for convenience
     void write_to_file(std::string& file_name) {
         std::ofstream file;
         file.open( "graph.txt" );

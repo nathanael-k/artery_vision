@@ -311,8 +311,8 @@ int main( int argc, char** argv )
 void Skeletonize( int, void* )
 {
     auto t1 = std::chrono::high_resolution_clock::now();
-    data1.Skeletonize(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
-    data2.Skeletonize(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
+    data1.prepareLayers(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
+    data2.prepareLayers(0, smooth, b_threshold, dilate, b_thin, threshold, max_threshold, dilation_size);
 
     imshow( "Skeleton 1", data1.skeleton[0] );
     imshow( "Skeleton 2", data2.skeleton[0] );
