@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/easy_flow_3/", 0),
-          data2("../data/renders/easy_flow_3/", 1);
+imageData data1("../data/renders/real_brain/", 0),
+          data2("../data/renders/real_brain/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -385,8 +385,6 @@ void buildGraph(imageData& data1, imageData& data2) {
             locatedPoints.push_back(point);
         }
 */
-
-
         for (auto& end : ends1)
         {
             specialPoint point;
@@ -837,6 +835,7 @@ void buildGraph(imageData& data1, imageData& data2) {
         data1.drawGraph(*graph.root, index);
         data2.drawGraph(*graph.root, index);
 
+        debugWaitShow();
 
         if (index != data1.size-1) {
         // when all are matched, correlate those matches to next endpoints layer / skeleton
@@ -930,7 +929,6 @@ void buildGraph(imageData& data1, imageData& data2) {
 
         std::string egal;
         data1.write_to_file(egal );
-        //debugWaitShow();
 
         // declare this part as finished!
         finishedPoints = locatedPoints.size();

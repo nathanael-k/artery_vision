@@ -14,11 +14,6 @@ arteryNode* arteryNode::addNode(const Eigen::Vector3d& posit, float radius) {
 
     arteryNode* node = new arteryNode(graph, posit, radius);
 
-
-    if (node->index == 21)
-        int a = 5;
-
-
     // connections
     paths[degree] = node;
     degree++;
