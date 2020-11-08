@@ -1,0 +1,2 @@
+#!/bin/bash
+/snap/bin/blender -b "../scenes/real_brain.blend" -P "2cameras_render" -- front left 20
