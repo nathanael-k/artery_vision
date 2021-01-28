@@ -15,8 +15,8 @@
 #include <imageData.h>
 #include <list>
 
-imageData data1("../data/renders/heart/", 0),
-          data2("../data/renders/heart/", 1);
+imageData data1("../data/renders/aorta_to_brain/", 0),
+          data2("../data/renders/aorta_to_brain/", 1);
 
 void displayVisual( int, void* );
 void changeVisual( int pos, void* );
@@ -1032,7 +1032,7 @@ double bestMatch(cv::Mat& img1, Camera& cam1, Vector2d& pix1, cv::Mat& img2, Cam
 
     if (best1 < best2) {
         // never go back if we left!
-        img1.at<uchar>(pix1.y(), pix1.x()) = 2;
+        img1.at<uchar>(pix1.y(), pix1.x()) = 2; 
         pix1 = candidate1;
         pix2 = pix2_new;
         position = pos1;

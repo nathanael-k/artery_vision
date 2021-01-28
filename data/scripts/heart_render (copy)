@@ -1,2 +1,0 @@
-#!/bin/bash
-/snap/bin/blender -b "../scenes/heart.blend" -P "2cameras_render" -- front left 20
