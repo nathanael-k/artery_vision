@@ -15,6 +15,7 @@ add_library(ZHANGSUEN STATIC src/libzhangsuen/zhangsuen.cpp include/zhangsuen.h)
 add_library(camera STATIC src/camera/camera.cpp include/camera.h)
 add_library(arteryNet STATIC src/arteryNet/arteryNet.cpp include/arteryNet.h)
 add_library(imageData STATIC src/imageData/imageData.cpp include/imageData.h)
+add_library(imageData2 STATIC src/imageData2/imageData2.cpp include/imageData2.h)
 
 target_include_directories(ZHANGSUEN PUBLIC include)
 target_compile_features(ZHANGSUEN PUBLIC cxx_std_11)
@@ -27,6 +28,9 @@ target_compile_features(arteryNet PUBLIC cxx_std_11)
 
 target_include_directories(imageData PUBLIC include)
 target_compile_features(imageData PUBLIC cxx_std_11)
+
+target_include_directories(imageData2 PUBLIC include)
+target_compile_features(imageData2 PUBLIC cxx_std_11)
 
 target_include_directories(test_camera PUBLIC test)
 
@@ -41,9 +45,11 @@ set(CMAKE_FIND_DEBUG_MODE TRUE)
 
 add_executable(artery_vision src/main.cpp)
 add_executable(2camtime src/apps/2camtime.cpp src/imageStereoAnalyzer/image_stereo_analyzer.cpp include/image_stereo_analyzer.h)
+add_executable(ball_optimization src/apps/ball_optimization.cpp)
 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
 target_link_libraries(test_camera ${OpenCV_LIBS} camera Eigen3::Eigen)
 target_link_libraries(test_net arteryNet Eigen3::Eigen)
 target_link_libraries(imageData ${OpenCV_LIBS} Eigen3::Eigen)
 target_link_libraries(2camtime ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
+target_link_libraries(ball_optimization ${OpenCV_LIBS} imageData2 camera arteryNet Eigen3::Eigen)
