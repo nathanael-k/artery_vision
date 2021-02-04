@@ -21,7 +21,7 @@ using Eigen::Vector2d;
 enum class from {
     source,
     threshold,
-    new_skeleton,
+    initConv,
     components,
     visualisation,
     endpoints,
@@ -34,7 +34,7 @@ public:
     int size;
     int visual_frame = 0;
 
-    std::vector<cv::Mat> source, threshold, new_skeleton, components, visualisation, endpoints, buffer;
+    std::vector<cv::Mat> source, threshold, initConv, components, visualisation, endpoints, buffer;
     std::vector<cv::Mat>* curr_displayed = &source;
 
     // what is currently selected / set

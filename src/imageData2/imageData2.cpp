@@ -31,14 +31,14 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     }
     visualisation.resize(size);
     endpoints.resize(size);
-    new_skeleton.resize(size);
+    initConv.resize(size);
     threshold.resize(size);
     buffer.resize(size);
     components.resize(size);
     for (int i = 0; i < size; i++) {
         source[i].copyTo(visualisation[i]);
         source[i].copyTo(endpoints[i]);
-        source[i].copyTo(new_skeleton[i]);
+        source[i].copyTo(initConv[i]);
         source[i].copyTo(threshold[i]);
         source[i].copyTo(buffer[i]);
         source[i].copyTo(components[i]);
@@ -55,9 +55,9 @@ void imageData::resetVisual(from where) {
             curr_displayed = &threshold;
         }
     }
-    if (where == from::new_skeleton) {
-        if (!new_skeleton[visual_frame].empty()) {
-            curr_displayed = &new_skeleton;
+    if (where == from::initConv) {
+        if (!initConv[visual_frame].empty()) {
+            curr_displayed = &initConv;
         }
     }
     if (where == from::visualisation) {

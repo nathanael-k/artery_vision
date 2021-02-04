@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 enable_testing()
 add_subdirectory( test )
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED PATHS /home/nate/code/opencv/build NO_DEFAULT_PATH)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
