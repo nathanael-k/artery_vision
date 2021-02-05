@@ -16,6 +16,9 @@ add_library(camera STATIC src/camera/camera.cpp include/camera.h)
 add_library(arteryNet STATIC src/arteryNet/arteryNet.cpp include/arteryNet.h)
 add_library(imageData STATIC src/imageData/imageData.cpp include/imageData.h)
 add_library(imageData2 STATIC src/imageData2/imageData2.cpp include/imageData2.h)
+add_library(ball STATIC src/ball/ball.cpp include/ball.h)
+add_library(stereo_camera STATIC src/stereo_camera/stereo_camera.cpp include/stereo_camera.h)
+
 
 target_include_directories(ZHANGSUEN PUBLIC include)
 target_compile_features(ZHANGSUEN PUBLIC cxx_std_11)
@@ -31,6 +34,12 @@ target_compile_features(imageData PUBLIC cxx_std_11)
 
 target_include_directories(imageData2 PUBLIC include)
 target_compile_features(imageData2 PUBLIC cxx_std_11)
+
+target_include_directories(ball PUBLIC include)
+target_compile_features(ball PUBLIC cxx_std_11)
+
+target_include_directories(stereo_camera PUBLIC include)
+target_compile_features(stereo_camera PUBLIC cxx_std_11)
 
 target_include_directories(test_camera PUBLIC test)
 
@@ -52,4 +61,4 @@ target_link_libraries(test_camera ${OpenCV_LIBS} camera Eigen3::Eigen)
 target_link_libraries(test_net arteryNet Eigen3::Eigen)
 target_link_libraries(imageData ${OpenCV_LIBS} Eigen3::Eigen)
 target_link_libraries(2camtime ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
-target_link_libraries(ball_optimization ${OpenCV_LIBS} imageData2 camera arteryNet Eigen3::Eigen)
+target_link_libraries(ball_optimization ${OpenCV_LIBS} imageData2 camera arteryNet Eigen3::Eigen ball stereo_camera)

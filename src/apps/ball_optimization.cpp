@@ -3,6 +3,8 @@
 
 #include <imageData2.h>
 
+int kernel_radius = 11;
+
 imageData data1("../data/renders/aorta_to_brain/", 0),
           data2("../data/renders/aorta_to_brain/", 1);
 
@@ -30,8 +32,8 @@ void changeVisual( int pos, void* )
         text.append("initConv");
     }
     if (pos == 3) {
-        f = from::components;
-        text.append("components");
+        f = from::distance;
+        text.append("distance");
     }
     if (pos == 4) {
         f = from::endpoints;
@@ -62,6 +64,36 @@ void thresholdCurrent( int state, void*) {
     }
 }
 
+void applyInitKernel( int state, void*) {
+    uint16_t inner_size_px = kernel_radius * 2 + 1;
+    uint16_t outer_size_px = kernel_radius * 4 + 1;
+    uint16_t delta_radius_px = kernel_radius;
+
+    // outer border is negative
+    auto outer = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(outer_size_px,outer_size_px));
+    auto inner = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(inner_size_px,inner_size_px));
+    cv::copyMakeBorder(inner, inner, delta_radius_px, delta_radius_px, delta_radius_px, delta_radius_px, cv::BORDER_CONSTANT, 0);
+    outer.convertTo(outer, CV_8U);
+    inner.convertTo(inner, CV_8U);
+
+    // max 2, min 0
+    cv::Mat kernel = 2 * inner + 0.8 - outer;
+    
+    // max 1, min 0
+    kernel.convertTo(kernel, CV_32F, 0.5, 0);
+    imshow( "Kernel", kernel);
+    kernel -= 0.4;
+    kernel *= 2;
+    // make sure the best response is a 1
+    float factor = 1. / (M_PI * kernel_radius * kernel_radius);
+    kernel *= factor;
+
+    cv::filter2D(data1.threshold[data1.visual_frame], data1.initConv[data1.visual_frame], 0, kernel);
+    cv::filter2D(data2.threshold[data1.visual_frame], data2.initConv[data1.visual_frame], 0, kernel);
+
+    displayVisual();
+}
+
 int main( int argc, char** argv )
 {
 
@@ -83,30 +115,24 @@ int main( int argc, char** argv )
 
 
     cv::createButton("Threshold", thresholdCurrent);
+    cv::createButton("Apply Kernel", applyInitKernel);
     cv::createTrackbar( "Frame:", "", &data1.visual_frame, data1.size-1, displayVisual);
     cv::createTrackbar( "Vis. Src:", "", &what, 6, changeVisual);
+    cv::createTrackbar( "Kernel Size", "", &kernel_radius, 21, nullptr);
 
     // find best starting point:
     // create filters with a circle in the middle, the rest is negative
+    applyInitKernel(0, nullptr);
+
+    // just for one image now, largest response
+    double min, max;
+    cv::Point min_loc, max_loc;
+    cv::minMaxLoc(data1.initConv[data1.visual_frame], &min, &max, &min_loc, &max_loc);
     
-    uint16_t inner_radius_px = 21;
-    uint16_t outer_radius_px = 31;
-    uint16_t delta_radius_px = outer_radius_px-inner_radius_px;
-
-    // outer border is negative
-    auto outer = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(outer_radius_px,outer_radius_px));
-    auto inner = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(inner_radius_px,inner_radius_px));
-    cv::copyMakeBorder(inner, inner, delta_radius_px/2, delta_radius_px/2, delta_radius_px/2, delta_radius_px/2, cv::BORDER_CONSTANT, 0);
-    outer.convertTo(outer, CV_8U);
-    inner.convertTo(inner, CV_8U);
-
-    cv::Mat kernel = 2 * inner + 1 - outer;
-    float factor = 1. / static_cast<float>(outer_radius_px * outer_radius_px);
-    kernel.convertTo(kernel, CV_32F, factor,-1);
-    imshow( "Kernel", kernel);
-
-    cv::filter2D((*data1.curr_displayed)[data1.visual_frame], data1.initConv[data1.visual_frame], 0, kernel);
-    cv::filter2D((*data1.curr_displayed)[data1.visual_frame], data1.initConv[data1.visual_frame], 0, kernel);
+    // init values: 
+    cv::Point location = max_loc;
+    double angle = 0;
+    double size = 10;
 
 
     cv::waitKey(0);

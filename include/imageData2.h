@@ -22,7 +22,7 @@ enum class from {
     source,
     threshold,
     initConv,
-    components,
+    distance,
     visualisation,
     endpoints,
     buffer
@@ -34,7 +34,7 @@ public:
     int size;
     int visual_frame = 0;
 
-    std::vector<cv::Mat> source, threshold, initConv, components, visualisation, endpoints, buffer;
+    std::vector<cv::Mat> source, threshold, initConv, distance, visualisation, endpoints, buffer;
     std::vector<cv::Mat>* curr_displayed = &source;
 
     // what is currently selected / set

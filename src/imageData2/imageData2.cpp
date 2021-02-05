@@ -7,6 +7,7 @@
 #include "opencv2/ximgproc.hpp"
 
 #include <imageData2.h>
+#include <ball.h>
 
 imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta", index) {
     // read size from file
@@ -34,14 +35,15 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     initConv.resize(size);
     threshold.resize(size);
     buffer.resize(size);
-    components.resize(size);
+    distance.resize(size);
     for (int i = 0; i < size; i++) {
+        cv::threshold(source[i], threshold[i], 128, 255, cv::THRESH_BINARY_INV);
         source[i].copyTo(visualisation[i]);
         source[i].copyTo(endpoints[i]);
-        source[i].copyTo(initConv[i]);
-        source[i].copyTo(threshold[i]);
+        source[i].convertTo(initConv[i],CV_32F);
         source[i].copyTo(buffer[i]);
-        source[i].copyTo(components[i]);
+        source[i].copyTo(distance[i]);
+        cv::distanceTransform(source[i], distance[i], cv::DIST_L2, cv::DIST_MASK_3, CV_8U);
         //source[i].convertTo(components[i],CV_16UC1);
     }
 }
@@ -75,9 +77,9 @@ void imageData::resetVisual(from where) {
             curr_displayed = &buffer;
         }
     }
-    if (where == from::components) {
-        if (!components[visual_frame].empty()) {
-            curr_displayed = &components;
+    if (where == from::distance) {
+        if (!distance[visual_frame].empty()) {
+            curr_displayed = &distance;
         }
     }
 }
