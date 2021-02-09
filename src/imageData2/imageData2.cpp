@@ -42,8 +42,8 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
         source[i].copyTo(endpoints[i]);
         source[i].convertTo(initConv[i],CV_32F);
         source[i].copyTo(buffer[i]);
-        source[i].copyTo(distance[i]);
-        cv::distanceTransform(source[i], distance[i], cv::DIST_L2, cv::DIST_MASK_3, CV_8U);
+        cv::distanceTransform(threshold[i], distance[i], cv::DIST_L2, cv::DIST_MASK_3);
+        threshold[i].convertTo(threshold[i], CV_32F, 1./255.);
         //source[i].convertTo(components[i],CV_16UC1);
     }
 }

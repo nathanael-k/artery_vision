@@ -1,7 +1,7 @@
 # Ignore the build and lib dirs
 build
 cmake-build-debug
+bin
+lib
 .idea
 
-# Ignore any executables
-bin/*
