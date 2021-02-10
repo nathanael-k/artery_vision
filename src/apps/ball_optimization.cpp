@@ -130,7 +130,7 @@ int main( int argc, char** argv )
     cv::minMaxLoc(data1.initConv[data1.visual_frame], &min, &max, &min_loc, &max_loc);
     
     // init values: 
-    cv::Point location = max_loc + cv::Point(-3,0);
+    cv::Point location = max_loc;
     uint8_t derivative_kernel_size = 31;
     double angle_deg = -32;
     double angle_rad = angle_deg / 180. * M_PI;

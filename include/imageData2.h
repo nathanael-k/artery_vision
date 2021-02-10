@@ -5,6 +5,7 @@
 #define ARTERY_VISION_IMAGEDATA_H
 
 #include "opencv2/core/utility.hpp"
+#include <opencv2/imgproc.hpp>
 
 #include <Eigen/Dense>
 #include <vector>

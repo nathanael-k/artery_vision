@@ -3,7 +3,7 @@
 #include <Eigen/Core>
 
 class Ball {
-    Eigen::Vector3d center;
-    double radius;
+    Eigen::Vector3d center_cm;
+    double radius_cm;
     double confidence;
 };
