@@ -28,7 +28,7 @@ private:
 Ball& ball;
 const imageData& image_data;
 const StereoCamera& stereo_camera;
-const 
+// const 
 
     // the actual optimization step
     void step(const double dx, const uint8_t frame_index);

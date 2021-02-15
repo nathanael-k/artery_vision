@@ -65,31 +65,11 @@ void thresholdCurrent( int state, void*) {
 }
 
 void applyInitKernel( int state, void*) {
-    uint16_t inner_size_px = kernel_radius * 2 + 1;
-    uint16_t outer_size_px = kernel_radius * 4 + 1;
-    uint16_t delta_radius_px = kernel_radius;
+    cv::filter2D(data1.threshold[data1.visual_frame], data1.initConv[data1.visual_frame], -1, circleKernel(kernel_radius));
+    cv::filter2D(data2.threshold[data1.visual_frame], data2.initConv[data1.visual_frame], -1, circleKernel(kernel_radius));
 
-    // outer border is negative
-    auto outer = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(outer_size_px,outer_size_px));
-    auto inner = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(inner_size_px,inner_size_px));
-    cv::copyMakeBorder(inner, inner, delta_radius_px, delta_radius_px, delta_radius_px, delta_radius_px, cv::BORDER_CONSTANT, 0);
-    outer.convertTo(outer, CV_8U);
-    inner.convertTo(inner, CV_8U);
-
-    // max 2, min 0
-    cv::Mat kernel = 2 * inner + 0.8 - outer;
-    
-    // max 1, min 0
-    kernel.convertTo(kernel, CV_32F, 0.5, 0);
-    imshow( "Kernel", kernel);
-    kernel -= 0.4;
-    kernel *= 2;
-    // make sure the best response is a 1
-    float factor = 1. / (M_PI * kernel_radius * kernel_radius);
-    kernel *= factor;
-
-    cv::filter2D(data1.threshold[data1.visual_frame], data1.initConv[data1.visual_frame], 0, kernel);
-    cv::filter2D(data2.threshold[data1.visual_frame], data2.initConv[data1.visual_frame], 0, kernel);
+    data1.initConv[data1.visual_frame].convertTo(data1.initConv[data1.visual_frame], CV_8U, 255);
+    data2.initConv[data1.visual_frame].convertTo(data2.initConv[data1.visual_frame], CV_8U, 255);
 
     displayVisual();
 }
@@ -122,7 +102,7 @@ int main( int argc, char** argv )
 
     // find best starting point:
     // create filters with a circle in the middle, the rest is negative
-    applyInitKernel(0, nullptr);
+    //applyInitKernel(0, nullptr);
 
     // just for one image now, largest response
     double min, max;

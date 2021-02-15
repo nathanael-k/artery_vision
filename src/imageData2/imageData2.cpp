@@ -9,6 +9,33 @@
 #include <imageData2.h>
 #include <ball.h>
 
+cv::Mat circleKernel(uint16_t kernel_radius) {
+    uint16_t inner_size_px = kernel_radius * 2 + 1;
+    uint16_t outer_size_px = kernel_radius * 4 + 1;
+    uint16_t delta_radius_px = kernel_radius;
+
+    // outer border is negative
+    auto outer = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(outer_size_px,outer_size_px));
+    auto inner = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size2i(inner_size_px,inner_size_px));
+    cv::copyMakeBorder(inner, inner, delta_radius_px, delta_radius_px, delta_radius_px, delta_radius_px, cv::BORDER_CONSTANT, 0);
+    outer.convertTo(outer, CV_8U);
+    inner.convertTo(inner, CV_8U);
+
+    // max 2, min 0
+    cv::Mat kernel = 2 * inner + 0.8 - outer;
+    
+    // max 1, min 0
+    kernel.convertTo(kernel, CV_32F, 0.5, 0);
+    imshow( "Kernel", kernel);
+    kernel -= 0.4;
+    kernel *= 2;
+    // make sure the best response is a 1
+    float factor = 1. / (M_PI * kernel_radius * kernel_radius);
+    kernel *= factor;
+
+    return kernel;
+}
+
 imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta", index) {
     // read size from file
     std::ifstream inFile;
@@ -39,12 +66,11 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     for (int i = 0; i < size; i++) {
         cv::threshold(source[i], threshold[i], 128, 255, cv::THRESH_BINARY_INV);
         source[i].copyTo(visualisation[i]);
-        source[i].copyTo(endpoints[i]);
-        source[i].convertTo(initConv[i],CV_32F);
+        source[i].copyTo(endpoints[i]); 
         source[i].copyTo(buffer[i]);
         cv::distanceTransform(threshold[i], distance[i], cv::DIST_L2, cv::DIST_MASK_3);
         threshold[i].convertTo(threshold[i], CV_32F, 1./255.);
-        //source[i].convertTo(components[i],CV_16UC1);
+        cv::filter2D(threshold[i], initConv[i], -1, circleKernel(7));
     }
 }
 

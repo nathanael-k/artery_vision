@@ -29,6 +29,7 @@ enum class from {
     buffer
 };
 
+cv::Mat circleKernel(uint16_t kernel_radius);
 
 class imageData {
 public:
