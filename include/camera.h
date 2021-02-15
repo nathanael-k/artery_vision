@@ -61,6 +61,15 @@ public:
                      const Vector3d& originB, const Vector3d& directionB, Vector3d& intersection);
 
     double static intersect(const Camera& camA, const Vector2d& pixelA, const Camera& camB, const Vector2d& pixelB, Vector3d& intersection);
+
+    // estimates the radius of a circle that projected has radius_px
+    // (from image to world)
+    double estimate_radius_world_m(const Vector3d& point, const double radius_px) const;
+
+    // estimate the radius in the image plane of a sphere with radius_m
+    // (from world to image)
+    double estimate_radius_image_px(const Vector3d& point, const double radius_m) const;
+
 };
 
 

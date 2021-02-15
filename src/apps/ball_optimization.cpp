@@ -3,6 +3,7 @@
 
 #include <imageData2.h>
 #include <stereo_camera.h>
+#include <ball_optimizer.h>
 
 int kernel_radius = 11;
 
@@ -102,6 +103,17 @@ int main( int argc, char** argv )
     cv::createTrackbar( "Frame:", "", &camera.current_displayed_frame, camera.total_frames-1, displayVisual);
     cv::createTrackbar( "Vis. Src:", "", &what, 6, changeVisual);
     cv::createTrackbar( "Kernel Size", "", &kernel_radius, 21, nullptr);
+
+    // initial maximal circles:
+    Circle init_ball_A(Eigen::Vector2d(608, 923), 7, 0);
+    Circle init_ball_B(Eigen::Vector2d(478, 964), 7, 0);
+
+    // random init ball
+    Ball ballon;
+
+    // get a ball
+    BallOptimizer optimizer(ballon, camera);
+    optimizer.triangulate_circles(init_ball_A, init_ball_B);
 
     // find best starting point:
     // create filters with a circle in the middle, the rest is negative

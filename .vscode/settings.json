@@ -3,6 +3,8 @@
     "files.associations": {
         "ostream": "cpp",
         "chrono": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "random": "cpp",
+        "core": "cpp"
     }
 }

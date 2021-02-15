@@ -24,6 +24,6 @@ void reset_visual(from where);
 StereoCamera(std::string meta_folder);
 
 // given pixel coordinates for both cameras, find the 3d point 
-double triangulate(const Eigen::Vector2d& point_cam_A, const Eigen::Vector2d& point_cam_B, Eigen::Vector3d& out_vector);
+double triangulate(const Eigen::Vector2d& point_cam_A, const Eigen::Vector2d& point_cam_B, Eigen::Vector3d& out_vector) const;
     
 };

@@ -10,21 +10,6 @@ void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
 
 };
 
-struct Circle {
-cv::Point location_px;
-double radius_px;
-double angle_deg;
-};
-
-struct CircleGradient {
-    double quality;
-    double rotation_grad_1, rotation_grad_2;
-    double scale_grad_1, scale_grad_2;
-    double translation_grad_1, translation_grad_2;
-};
-
-
-
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
     // calculate CircleGradients for both cameras
     CircleGradient grad0 = get_gradient(0, frame_index);
@@ -39,7 +24,7 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index) {
 }
 
 Circle BallOptimizer::project_ball(uint8_t camera_index) const {
-return {};
+return Circle({0,0}, 10, 0);
 }
 
 CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t frame_index) const {
@@ -49,8 +34,8 @@ CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t f
     // setting:
     uint8_t derivative_kernel_size = 31;
 
-    cv::Point& location = circle.location_px;
-    double& angle_deg = circle.angle_deg;
+    cv::Point location = {(int)circle.location_px.x(), (int) circle.location_px.y()};
+    double angle_deg = circle.angle_deg();
     double angle_rad = angle_deg / 180. * M_PI;
     // estimate radius from distance transform...
     double& radius = circle.radius_px;
@@ -156,4 +141,44 @@ CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t f
         scale_1_grad, scale_2_grad,
         translation_1_grad, translation_2_grad,
         };
+}
+
+void BallOptimizer::triangulate_circles(const Circle& circle_A, const Circle& circle_B) {
+    const Camera& cam_A = stereo_camera.camera_A;
+    const Camera& cam_B = stereo_camera.camera_B;
+    
+    // position
+    Vector3d center;
+    double distance = stereo_camera.triangulate(circle_A.location_px, circle_B.location_px, center);
+
+    // radius
+    double radius_A = cam_A.estimate_radius_world_m(center, circle_A.radius_px);
+    double radius_B = cam_B.estimate_radius_world_m(center, circle_B.radius_px);
+
+    // assert the radii do not disagree too much
+    assert(abs(radius_A / radius_B - 1) < 0.3);
+
+    double radius = ( radius_A + radius_B ) * 0.5;
+
+    // direction
+
+    // create a normed vector for each camera that would be the direction if perfectly perpendicular
+    // then add and norm them for the initial direction estimate
+
+    // we can just rotate the up vector around the direction
+    Eigen::Vector3d dir_A = Eigen::AngleAxisd(circle_A.angle_rad(), cam_A.direction) * cam_A.cameraUp;
+    Eigen::Vector3d dir_B = Eigen::AngleAxisd(circle_B.angle_rad(), cam_B.direction) * cam_B.cameraUp;
+
+    // it can happen that they point in different directions
+    double dot = dir_A.dot(dir_B);
+
+    if (dot < 0)
+        dir_B *= -1;
+
+    Eigen::Vector3d direction = (dir_A + dir_B).normalized();
+
+    ball.center_m = center;
+    ball.radius_m = radius;
+    ball.direction = direction;
+    ball.confidence = 1 / (distance + 0.1);
 }

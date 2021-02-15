@@ -7,7 +7,7 @@ StereoCamera::StereoCamera(std::string meta_folder)
     assert(image_data_A.size == image_data_B.size);
 }
 
-double StereoCamera::triangulate(const Eigen::Vector2d& point_cam_A, const Eigen::Vector2d& point_cam_B, Eigen::Vector3d& out_intersection) {
+double StereoCamera::triangulate(const Eigen::Vector2d& point_cam_A, const Eigen::Vector2d& point_cam_B, Eigen::Vector3d& out_intersection) const {
     // rely on camera implementation
     return Camera::intersect(camera_A, point_cam_A, camera_B, point_cam_B, out_intersection);
 }
