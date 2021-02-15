@@ -33,9 +33,6 @@ cv::Mat circleKernel(uint16_t kernel_radius);
 
 class imageData {
 public:
-    int size;
-    int visual_frame = 0;
-
     std::vector<cv::Mat> source, threshold, initConv, distance, visualisation, endpoints, buffer;
     std::vector<cv::Mat>* curr_displayed = &source;
 
@@ -48,11 +45,13 @@ public:
 
     arteryGraph graph;
 
-    Camera cam;
+
+    const Camera& cam;
+    size_t size;
 
     // constructor: loads images from folder based on the meta file
     // prepares all the different image layers by copying from the source
-    imageData(std::string metaFolder, int index);
+    imageData(std::string metaFolder, const Camera& camera);
 
     // #### methods for visualisation
 
@@ -70,7 +69,7 @@ public:
     }
 
     // changes the pointer that defines what should currently be displayed
-    void resetVisual(from where = from::source);
+    void resetVisual(from where = from::source, int frame = 0);
 
     // draw a line on "visualization" in image coordinates, at the specified index (image in sequence)
     void renderLine(const Eigen::Vector4d& line, int index = 0);

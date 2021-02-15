@@ -36,7 +36,9 @@ cv::Mat circleKernel(uint16_t kernel_radius) {
     return kernel;
 }
 
-imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta", index) {
+imageData::imageData(std::string metaFolder, const Camera& camera)
+    : cam(camera)
+{
     // read size from file
     std::ifstream inFile;
     inFile.open(metaFolder+"meta");
@@ -74,37 +76,37 @@ imageData::imageData(std::string metaFolder, int index) : cam(metaFolder+"meta",
     }
 }
 
-void imageData::resetVisual(from where) {
+void imageData::resetVisual(from where, int frame) {
     if (where == from::source) {
         curr_displayed = &source;
     }
     if (where == from::threshold) {
-        if (!threshold[visual_frame].empty()) {
+        if (!threshold[frame].empty()) {
             curr_displayed = &threshold;
         }
     }
     if (where == from::initConv) {
-        if (!initConv[visual_frame].empty()) {
+        if (!initConv[frame].empty()) {
             curr_displayed = &initConv;
         }
     }
     if (where == from::visualisation) {
-        if (!visualisation[visual_frame].empty()) {
+        if (!visualisation[frame].empty()) {
             curr_displayed = &visualisation;
         }
     }
     if (where == from::endpoints) {
-        if (!endpoints[visual_frame].empty()) {
+        if (!endpoints[frame].empty()) {
             curr_displayed = &endpoints;
         }
     }
     if (where == from::buffer) {
-        if (!buffer[visual_frame].empty()) {
+        if (!buffer[frame].empty()) {
             curr_displayed = &buffer;
         }
     }
     if (where == from::distance) {
-        if (!distance[visual_frame].empty()) {
+        if (!distance[frame].empty()) {
             curr_displayed = &distance;
         }
     }
@@ -164,16 +166,11 @@ int correlate(const cv::Mat& ref, const Camera& leadCam, const Camera& refCam,
                     // is the new point connected?
                     pixelDistance = std::max(abs(i), abs(j));
                 }
-
             }
-
         }
     }
     return pixelDistance;
 }
-
-
-
 
 
 Vector2d double_locate(cv::Mat &prio, cv::Mat &backup, const cv::Mat &components, const Eigen::Vector4d &line, const Vector2d pos,

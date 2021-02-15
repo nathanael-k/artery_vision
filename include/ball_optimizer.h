@@ -15,20 +15,14 @@ struct CircleGradient;
 class BallOptimizer {
 public:
 
-    BallOptimizer(Ball& ball, const imageData& image_data, const StereoCamera& stereo_camera);
+    BallOptimizer(Ball& ball, const StereoCamera& stereo_camera);
 
     // optimize the properties of ball in reference to the image data captured through stereo cameras
     void optimize(const uint16_t steps, const uint8_t frame_index);
 
-
-
-
-
 private:
 Ball& ball;
-const imageData& image_data;
 const StereoCamera& stereo_camera;
-// const 
 
     // the actual optimization step
     void step(const double dx, const uint8_t frame_index);

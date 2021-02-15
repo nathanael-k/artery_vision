@@ -2,16 +2,21 @@
 #include "opencv2/highgui.hpp"
 
 #include <imageData2.h>
+#include <stereo_camera.h>
 
 int kernel_radius = 11;
 
-imageData data1("../data/renders/aorta_to_brain/", 0),
-          data2("../data/renders/aorta_to_brain/", 1);
+StereoCamera camera("../data/renders/aorta_to_brain/");
+
+//imageData data1("../data/renders/aorta_to_brain/", 0),
+//          data2("../data/renders/aorta_to_brain/", 1);
 
 void displayVisual( int = 0, void* =  nullptr )
 {
-    imshow( "Cam1 Visual", (*data1.curr_displayed)[data1.visual_frame]);
-    imshow( "Cam2 Visual", (*data2.curr_displayed)[data1.visual_frame]);
+    //imshow( "Cam1 Visual", (*data1.curr_displayed)[data1.visual_frame]);
+    imshow( "Cam1 Visual", camera.displayed_image_A());
+    imshow( "Cam2 Visual", camera.displayed_image_B());
+    //imshow( "Cam2 Visual", (*data2.curr_displayed)[data1.visual_frame]);
 }
 
 void changeVisual( int pos, void* )
@@ -49,27 +54,26 @@ void changeVisual( int pos, void* )
         text.append("visualisation");
     }
 
-    data1.resetVisual(f);
-    data2.resetVisual(f);
-    cv::displayStatusBar("Control", text);
+    camera.reset_visual(f);
+    cv::displayStatusBar("Kernel", text);
     displayVisual(0,0);
 }
 
 void thresholdCurrent( int state, void*) {
     // if button got pressed down
     if (state == 0) {
-        data1.apply_threshold(data1.visual_frame, 128, 255);
-        data2.apply_threshold(data1.visual_frame, 128, 255);
+        camera.image_data_A.apply_threshold(camera.current_displayed_frame, 128, 255);
+        camera.image_data_B.apply_threshold(camera.current_displayed_frame, 128, 255);
         displayVisual();
     }
 }
 
 void applyInitKernel( int state, void*) {
-    cv::filter2D(data1.threshold[data1.visual_frame], data1.initConv[data1.visual_frame], -1, circleKernel(kernel_radius));
-    cv::filter2D(data2.threshold[data1.visual_frame], data2.initConv[data1.visual_frame], -1, circleKernel(kernel_radius));
+    cv::filter2D(camera.image_data_A.threshold[camera.current_displayed_frame], camera.image_data_A.initConv[camera.current_displayed_frame], -1, circleKernel(kernel_radius));
+    cv::filter2D(camera.image_data_B.threshold[camera.current_displayed_frame], camera.image_data_B.initConv[camera.current_displayed_frame], -1, circleKernel(kernel_radius));
 
-    data1.initConv[data1.visual_frame].convertTo(data1.initConv[data1.visual_frame], CV_8U, 255);
-    data2.initConv[data1.visual_frame].convertTo(data2.initConv[data1.visual_frame], CV_8U, 255);
+    camera.image_data_A.initConv[camera.current_displayed_frame].convertTo(camera.image_data_A.initConv[camera.current_displayed_frame], CV_8U, 255);
+    camera.image_data_B.initConv[camera.current_displayed_frame].convertTo(camera.image_data_B.initConv[camera.current_displayed_frame], CV_8U, 255);
 
     displayVisual();
 }
@@ -77,7 +81,7 @@ void applyInitKernel( int state, void*) {
 int main( int argc, char** argv )
 {
 
-    if( data1.source.empty() ||  data2.source.empty())
+    if( camera.image_data_A.source.empty() ||  camera.image_data_B.source.empty())
     {
         std::cout << "Could not open or find the image!\n" << std::endl;
         return -1;
@@ -88,15 +92,14 @@ int main( int argc, char** argv )
     cv::namedWindow( "Cam1 Visual", cv::WINDOW_AUTOSIZE);
     cv::namedWindow( "Cam2 Visual", cv::WINDOW_AUTOSIZE);
     cv::namedWindow( "Kernel", cv::WINDOW_AUTOSIZE);
-    imshow( "Cam1 Visual", (*data1.curr_displayed)[data1.visual_frame]);
-    imshow( "Cam2 Visual", (*data2.curr_displayed)[data1.visual_frame]);
+    displayVisual();
 
     int what = 0;
 
 
     cv::createButton("Threshold", thresholdCurrent);
     cv::createButton("Apply Kernel", applyInitKernel);
-    cv::createTrackbar( "Frame:", "", &data1.visual_frame, data1.size-1, displayVisual);
+    cv::createTrackbar( "Frame:", "", &camera.current_displayed_frame, camera.total_frames-1, displayVisual);
     cv::createTrackbar( "Vis. Src:", "", &what, 6, changeVisual);
     cv::createTrackbar( "Kernel Size", "", &kernel_radius, 21, nullptr);
 
@@ -104,10 +107,13 @@ int main( int argc, char** argv )
     // create filters with a circle in the middle, the rest is negative
     //applyInitKernel(0, nullptr);
 
+
+    /*
+
     // just for one image now, largest response
     double min, max;
     cv::Point min_loc, max_loc;
-    cv::minMaxLoc(data1.initConv[data1.visual_frame], &min, &max, &min_loc, &max_loc);
+    cv::minMaxLoc(camera.image_data_A.initConv[camera.current_displayed_frame.visual_frame], &min, &max, &min_loc, &max_loc);
     
     // init values: 
     cv::Point location = max_loc;
@@ -115,7 +121,7 @@ int main( int argc, char** argv )
     double angle_deg = -32;
     double angle_rad = angle_deg / 180. * M_PI;
     // estimate radius from distance transform...
-    float radius = data1.distance[data1.visual_frame].at<float>(location);
+    float radius = camera.image_data_A.distance[camera.image_data_A.visual_frame].at<float>(location);
     
     // source rectangle
     cv::Mat patch;
@@ -231,6 +237,8 @@ int main( int argc, char** argv )
     double translation_1_grad = translation_1.cwiseProduct(area_inv).sum();
     double translation_2_grad = translation_2.cwiseProduct(area).sum();
  
+*/
+
     cv::waitKey(0);
     return 0;
 }

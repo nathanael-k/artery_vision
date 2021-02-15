@@ -13,7 +13,7 @@ Camera::Camera(std::string metaPath, int index) {
     std::ifstream inFile;
     inFile.open(metaPath);
     if (!inFile) {
-        std::cerr << "Unable to open file: " << metaPath;
+        std::cerr << "Unable to open file: " << metaPath << "\n";
         exit(1);   // call system to stop
     }
 

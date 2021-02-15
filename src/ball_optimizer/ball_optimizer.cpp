@@ -2,8 +2,8 @@
 
 #include <ball_optimizer.h>
 
-BallOptimizer::BallOptimizer(Ball& ball, const imageData& image_data, const StereoCamera& stereo_camera) 
-    : ball(ball), image_data(image_data), stereo_camera(stereo_camera) {};
+BallOptimizer::BallOptimizer(Ball& ball, const StereoCamera& stereo_camera) 
+    : ball(ball), stereo_camera(stereo_camera) {};
 
 void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
     // project initial coordinates of ball
@@ -39,10 +39,10 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index) {
 }
 
 Circle BallOptimizer::project_ball(uint8_t camera_index) const {
-
+return {};
 }
 
-CircleGradient BallOptimizer::get_gradient(const uint8_t camera_index, const uint8_t frame_index) const {
+CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t frame_index) const {
     // where is the circle now?
     Circle circle = project_ball(camera_index);    
     
@@ -66,7 +66,7 @@ CircleGradient BallOptimizer::get_gradient(const uint8_t camera_index, const uin
         edge_2 = 16;
 
     cv::Rect src_area = cv::Rect(location - cv::Point(edge_2,edge_2), location + cv::Point(edge_2,edge_2));
-    auto src_patch = stereo_camera.image_data[camera_index].threshold[frame_index](src_area);
+    auto src_patch = stereo_camera.image_data(camera_index).threshold[frame_index](src_area);
 
     // rotate
     double scale = derivative_kernel_size/(6*radius);
