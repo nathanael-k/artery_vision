@@ -1,9 +1,12 @@
 #include "opencv2/imgproc.hpp"
+#include "opencv2/highgui.hpp"
 
 #include <ball_optimizer.h>
 
-BallOptimizer::BallOptimizer(Ball& ball, const StereoCamera& stereo_camera) 
-    : ball(ball), stereo_camera(stereo_camera) {};
+BallOptimizer::BallOptimizer(Ball& ball, const StereoCamera& stereo_camera, const Circle& circle_A, const Circle& circle_B) 
+    : ball(ball), stereo_camera(stereo_camera) {
+        triangulate_ball(circle_A, circle_B);
+    };
 
 void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
     // project initial coordinates of ball
@@ -11,25 +14,47 @@ void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
 };
 
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
-    // calculate CircleGradients for both cameras
-    CircleGradient grad0 = get_gradient(0, frame_index);
-    CircleGradient grad1 = get_gradient(1, frame_index);
+    // calculate CircleGradients for both cameras   
+    
+    
+    for (int i = 0; i < 100; ++i){
 
-    // apply location adjustment 
+        Circle circleA = project_circle(0); 
+        Circle circleB = project_circle(1); 
+    
+        CircleGradient gradA = get_gradient(circleA, 0, frame_index);
+        cv::waitKey(0);
+        CircleGradient gradB = get_gradient(circleB, 1, frame_index);
+        cv::waitKey(0);
 
-    // apply rotation of ball direction
+        std::cout << gradA.quality << "    " << gradB.quality << "\n";
 
-    // apply scale adjustment
+        circleA.apply_gradient(gradA, 1);
+        circleB.apply_gradient(gradB, 1);
+
+        triangulate_ball(circleA, circleB);
+    }
+    
+    
 
 }
 
-Circle BallOptimizer::project_ball(uint8_t camera_index) const {
-return Circle({0,0}, 10, 0);
+Circle BallOptimizer::project_circle(uint8_t camera_index) const {
+    assert(camera_index == 0 || camera_index == 1);
+    
+    const Camera& cam = (camera_index) ? stereo_camera.camera_B : stereo_camera.camera_A;
+    
+    Circle ret = {  cam.projectPoint(ball.center_m), 
+                    cam.estimate_radius_image_px(ball.center_m, ball.radius_m),
+                    0};
+
+    Eigen::Vector2d A_direction_px = cam.projectPoint(ball.center_m + ball.direction) - ret.location_px;
+    ret.set_angle_rad(atan2(A_direction_px.x(), -A_direction_px.y()));
+    return ret;
 }
 
-CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t frame_index) const {
-    // where is the circle now?
-    Circle circle = project_ball(camera_index);    
+CircleGradient BallOptimizer::get_gradient(const Circle& circle, uint8_t camera_index, const uint8_t frame_index) const {
+
     
     // setting:
     uint8_t derivative_kernel_size = 31;
@@ -38,7 +63,7 @@ CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t f
     double angle_deg = circle.angle_deg();
     double angle_rad = angle_deg / 180. * M_PI;
     // estimate radius from distance transform...
-    double& radius = circle.radius_px;
+    const double& radius = circle.radius_px;
     
     // source rectangle
     cv::Mat patch;
@@ -64,6 +89,8 @@ CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t f
     float border = (derot.cols - derivative_kernel_size)/2;
     auto rect = cv::Rect(border, border, derivative_kernel_size, derivative_kernel_size);
     patch = derot(rect);
+
+    cv::imshow( "Kernel", patch);
 
     // inverse
     cv::Mat patch_inv = 1 - patch;
@@ -143,7 +170,7 @@ CircleGradient BallOptimizer::get_gradient(uint8_t camera_index, const uint8_t f
         };
 }
 
-void BallOptimizer::triangulate_circles(const Circle& circle_A, const Circle& circle_B) {
+void BallOptimizer::triangulate_ball(const Circle& circle_A, const Circle& circle_B) {
     const Camera& cam_A = stereo_camera.camera_A;
     const Camera& cam_B = stereo_camera.camera_B;
     
@@ -160,25 +187,44 @@ void BallOptimizer::triangulate_circles(const Circle& circle_A, const Circle& ci
 
     double radius = ( radius_A + radius_B ) * 0.5;
 
-    // direction
+    // better direction:
+    // Construct Plane for each Camera through origin, ball center and direction px
 
-    // create a normed vector for each camera that would be the direction if perfectly perpendicular
-    // then add and norm them for the initial direction estimate
+    auto pix_dir_A = circle_A.direction_px();
+    auto loc_dir_A = cam_A.point_on_sensor_world(pix_dir_A);
 
-    // we can just rotate the up vector around the direction
-    Eigen::Vector3d dir_A = Eigen::AngleAxisd(circle_A.angle_rad(), cam_A.direction) * cam_A.cameraUp;
-    Eigen::Vector3d dir_B = Eigen::AngleAxisd(circle_B.angle_rad(), cam_B.direction) * cam_B.cameraUp;
 
-    // it can happen that they point in different directions
-    double dot = dir_A.dot(dir_B);
+    Eigen::Hyperplane<double,3> plane_A = Eigen::Hyperplane<double,3>::Through(
+                cam_A.point_on_sensor_world(circle_A.location_px),
+                cam_A.point_on_sensor_world(circle_A.direction_px()), 
+                cam_A.origin);
+    Eigen::Hyperplane<double,3> plane_B = Eigen::Hyperplane<double,3>::Through(
+                cam_B.point_on_sensor_world(circle_B.location_px),
+                cam_B.point_on_sensor_world(circle_B.direction_px()), 
+                cam_B.origin);
 
-    if (dot < 0)
-        dir_B *= -1;
 
-    Eigen::Vector3d direction = (dir_A + dir_B).normalized();
+    // use normals to find direction of intersection, which is all we need
+    Eigen::Vector3d better_direction = plane_A.normal().cross(plane_B.normal()).normalized();
 
     ball.center_m = center;
     ball.radius_m = radius;
-    ball.direction = direction;
+    ball.direction = better_direction;
     ball.confidence = 1 / (distance + 0.1);
 }
+
+void BallOptimizer::project_circles(Circle& out_circle_A, Circle& out_circle_B) {
+    const Camera& cam_A = stereo_camera.camera_A;
+    const Camera& cam_B = stereo_camera.camera_B;
+
+    out_circle_A.location_px = cam_A.projectPoint(ball.center_m);
+    Vector2d A_direction_px = cam_A.projectPoint(ball.center_m + ball.direction) - out_circle_A.location_px;
+    out_circle_A.set_angle_rad(atan2(A_direction_px.x(), -A_direction_px.y()));
+    out_circle_A.radius_px = cam_A.estimate_radius_image_px(ball.center_m, ball.radius_m);
+
+    out_circle_B.location_px = cam_B.projectPoint(ball.center_m);
+    Vector2d B_direction_px = cam_B.projectPoint(ball.center_m + ball.direction) - out_circle_B.location_px;
+    out_circle_B.set_angle_rad(atan2(B_direction_px.x(), -B_direction_px.y()));
+    out_circle_B.radius_px = cam_B.estimate_radius_image_px(ball.center_m, ball.radius_m);
+}
+    

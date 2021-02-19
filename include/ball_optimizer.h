@@ -15,7 +15,7 @@ struct CircleGradient;
 class BallOptimizer {
 public:
 
-    BallOptimizer(Ball& ball, const StereoCamera& stereo_camera);
+    BallOptimizer(Ball& ball, const StereoCamera& stereo_camera, const Circle& circle_A, const Circle& circle_B);
 
     // optimize the properties of ball in reference to the image data captured through stereo cameras
     void optimize(const uint16_t steps, const uint8_t frame_index);
@@ -29,13 +29,17 @@ const StereoCamera& stereo_camera;
     void step(const double dx, const uint8_t frame_index);
 
     // generates a circle that represent the projection of a ball onto the image of the camera
-    Circle project_ball(uint8_t camera_index) const;
+    Circle project_circle(uint8_t camera_index) const;
 
     // based on a circle for each camera, estimate the best fit of a ball in 3d space
-    void triangulate_circles(const Circle& circle_A, const Circle& circle_B);
+    void triangulate_ball(const Circle& circle_A, const Circle& circle_B);
 
+    // project the ball to the two circles
+    void project_circles(Circle& out_circle_A, Circle& out_circle_B);
+        
     // generates the gradient of the ball in camera coordinates
-    CircleGradient get_gradient(const uint8_t camera_index, const uint8_t frame_index) const;
-
+    CircleGradient get_gradient(const Circle& circle, const uint8_t camera_index, const uint8_t frame_index) const;
+ 
+    
 
 };

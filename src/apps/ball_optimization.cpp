@@ -105,15 +105,18 @@ int main( int argc, char** argv )
     cv::createTrackbar( "Kernel Size", "", &kernel_radius, 21, nullptr);
 
     // initial maximal circles:
-    Circle init_ball_A(Eigen::Vector2d(608, 923), 7, 0);
-    Circle init_ball_B(Eigen::Vector2d(478, 964), 7, 0);
+    Circle init_ball_A(Eigen::Vector2d(609, 928), 10, 30);
+    Circle init_ball_B(Eigen::Vector2d(480, 963), 10, 40);
 
     // random init ball
     Ball ballon;
 
     // get a ball
-    BallOptimizer optimizer(ballon, camera);
-    optimizer.triangulate_circles(init_ball_A, init_ball_B);
+    BallOptimizer optimizer(ballon, camera, init_ball_A, init_ball_B);
+
+    optimizer.step(1.0, 0);
+
+    cv::waitKey(0);
 
     // find best starting point:
     // create filters with a circle in the middle, the rest is negative
@@ -251,6 +254,5 @@ int main( int argc, char** argv )
  
 */
 
-    cv::waitKey(0);
     return 0;
 }

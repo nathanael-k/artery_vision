@@ -231,8 +231,12 @@ double Camera::intersect(const Camera& camA, const Vector2d& pixelA,
     double Camera::estimate_radius_image_px(const Vector3d& point, const double radius_m) const {
 
         double distance = (point - origin).norm();
-        double radius = radius_m * focalLength / distance;
-        return radius_m / pixelDistance;
+        double radius_px = radius_m * focalLength / distance;
+        return radius_px / pixelDistance;
+    }
+
+    Vector3d Camera::point_on_sensor_world(const Vector2d& point_px) const {
+        return origin + ray(point_px);
     }
 
 

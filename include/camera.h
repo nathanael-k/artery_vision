@@ -70,6 +70,8 @@ public:
     // (from world to image)
     double estimate_radius_image_px(const Vector3d& point, const double radius_m) const;
 
+    Vector3d point_on_sensor_world(const Vector2d& point_px) const;
+
 };
 
 
