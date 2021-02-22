@@ -212,19 +212,4 @@ void BallOptimizer::triangulate_ball(const Circle& circle_A, const Circle& circl
     ball.direction = better_direction;
     ball.confidence = 1 / (distance + 0.1);
 }
-
-void BallOptimizer::project_circles(Circle& out_circle_A, Circle& out_circle_B) {
-    const Camera& cam_A = stereo_camera.camera_A;
-    const Camera& cam_B = stereo_camera.camera_B;
-
-    out_circle_A.location_px = cam_A.projectPoint(ball.center_m);
-    Vector2d A_direction_px = cam_A.projectPoint(ball.center_m + ball.direction) - out_circle_A.location_px;
-    out_circle_A.set_angle_rad(atan2(A_direction_px.x(), -A_direction_px.y()));
-    out_circle_A.radius_px = cam_A.estimate_radius_image_px(ball.center_m, ball.radius_m);
-
-    out_circle_B.location_px = cam_B.projectPoint(ball.center_m);
-    Vector2d B_direction_px = cam_B.projectPoint(ball.center_m + ball.direction) - out_circle_B.location_px;
-    out_circle_B.set_angle_rad(atan2(B_direction_px.x(), -B_direction_px.y()));
-    out_circle_B.radius_px = cam_B.estimate_radius_image_px(ball.center_m, ball.radius_m);
-}
     

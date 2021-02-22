@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <bits/stdint-intn.h>
+#include <sys/types.h>
 
 struct Ball {
     Eigen::Vector3d direction;
@@ -19,6 +21,7 @@ struct CircleGradient {
 struct Circle {
     Eigen::Vector2d location_px;
     double radius_px;
+    int16_t connections = -1;
 
 private:
     double angle_deg_;
@@ -29,6 +32,12 @@ Circle(Eigen::Vector2d location_px, double radius_px, double angle_deg) :
     location_px(location_px), radius_px(radius_px) 
 {
     set_angle_deg(angle_deg);
+}
+
+Circle(Eigen::Vector2d location_px, double radius_px, Eigen::Vector2d point_at_px) : 
+    location_px(location_px), radius_px(radius_px) 
+{
+    point_at_px(point_at_px);
 }
 
     double angle_deg() const {
@@ -63,6 +72,11 @@ Circle(Eigen::Vector2d location_px, double radius_px, double angle_deg) :
         direction_px.x() += sin(angle_rad()) * radius_px;
         direction_px.y() -= cos(angle_rad()) * radius_px;
         return direction_px;
+    }
+
+    void point_at_px(Eigen::Vector2d point_at_px) {
+        Eigen::Vector2d direction = point_at_px - location_px;
+        set_angle_deg(atan2(direction.x(), direction.y()));
     }
 
     void apply_gradient(const CircleGradient& gradient, double dx) {
