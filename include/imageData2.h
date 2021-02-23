@@ -4,7 +4,6 @@
 #ifndef ARTERY_VISION_IMAGEDATA_H
 #define ARTERY_VISION_IMAGEDATA_H
 
-
 #include "opencv2/core/types.hpp"
 #include "opencv2/core/utility.hpp"
 #include <opencv2/imgproc.hpp>
@@ -15,8 +14,8 @@
 #include <sys/types.h>
 #include <vector>
 
-#include <ball.h>
 #include <arteryNet.h>
+#include <ball.h>
 #include <camera.h>
 
 using Eigen::Vector2d;
@@ -188,14 +187,28 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
                 const Camera &cam_new);
 
 // based on a coordinate and reference data, create a new circle
-Circle initialize_Circle(const cv::Point& coord, const cv::Mat &distances,
+Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
                          const cv::Mat &threshold);
 
 // generates coordinates of points in a circle with radius around center
-void fill_circle_coordinates(std::vector<cv::Point2i>& coordinates, cv::Point2i center, u_int8_t radius);
+void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
+                             cv::Point2i center, u_int8_t radius);
 
-void fill_array(std::vector<u_int8_t>& array, const std::vector<cv::Point2i>& coordinates, const cv::Mat& source);
+void fill_array(std::vector<u_int8_t> &array,
+                const std::vector<cv::Point2i> &coordinates,
+                const cv::Mat &source);
 
-std::vector<Circle> find_adjacent_circles(const cv::Point& coord, uint8_t radius, const cv::Mat &distances,
-                         const cv::Mat &threshold);
+std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
+                                          uint8_t radius,
+                                          const cv::Mat &distances,
+                                          const cv::Mat &threshold);
+
+std::vector<Circle> find_adjacent_circles(const Circle &circle,
+                                          const cv::Mat &distances,
+                                          const cv::Mat &threshold);
+
+std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
+                                         const cv::Mat &threshold,
+                                         const cv::Mat &distances);
+
 #endif // ARTERY_VISION_IMAGEDATA_H

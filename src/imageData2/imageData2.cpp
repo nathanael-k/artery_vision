@@ -2,9 +2,10 @@
 // Created by nate on 19.09.20.
 //
 
-#include "Eigen/src/Core/Matrix.h"
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/types.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/ximgproc.hpp"
@@ -104,7 +105,7 @@ imageData::imageData(std::string metaFolder, const Camera &camera)
     cv::distanceTransform(threshold[i], distance[i], cv::DIST_L2,
                           cv::DIST_MASK_3);
     initCircleCenters(threshold[i], initConv[i]);
-    threshold[i].convertTo(threshold[i], CV_32F, 1. / 255.);
+    //
   }
 }
 
@@ -323,11 +324,11 @@ Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
   std::vector<Circle> circles =
       find_adjacent_circles(coord, radius * 1.5, distances, threshold);
 
-  Circle ret(Eigen::Vector2d(coord), radius, 0);
+  Circle ret(Eigen::Vector2d(coord.x, coord.y), radius, 0);
 
   ret.connections = circles.size();
   if (circles.size() > 0) {
-    ret.point_at_px(circles[0].location_px);
+    ret.point_at(circles[0].location_px);
   }
 
   return ret;
@@ -368,9 +369,11 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
         // close connection and generate circle
         in_connection = false;
         size_t center = (connection_start + index - 1) / 2;
-        Eigen::Vector2d position_px(coordinates[center]);
-        double radius_px = distances.at<double>(coordinates[center]);
-        ret.emplace_back(position_px, radius_px, Eigen::Vector2d(coord));
+        Eigen::Vector2d position_px(coordinates[center].x,
+                                    coordinates[center].y);
+        double radius_px = distances.at<float>(coordinates[center]);
+        ret.emplace_back(position_px, radius_px,
+                         Eigen::Vector2d(coord.x, coord.y));
       }
     } else {
       // we have a zero
@@ -384,6 +387,14 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
   return ret;
 }
 
+std::vector<Circle> find_adjacent_circles(const Circle &circle,
+                                          const cv::Mat &distances,
+                                          const cv::Mat &threshold) {
+  cv::Point2i center(circle.location_px.x(), circle.location_px.y());
+  return find_adjacent_circles(center, circle.radius_px * 1.5, distances,
+                               threshold);
+}
+
 void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
                              cv::Point2i center, u_int8_t radius) {
   // Bresenham
@@ -392,26 +403,93 @@ void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
   int y = radius;
   int d = 3 - 2 * radius;
   first_octant.emplace_back(cv::Point(x, y));
-  while (y >= x) {
+  while (y > x) {
     x++;
 
     if (d > 0) {
       y--;
       d = d + 4 * (x - y) + 10;
-    } 
-    else
+    } else
       d = d + 4 * x + 6;
 
     first_octant.emplace_back(cv::Point(x, y));
   }
   // first octant is filled;
   coordinates.clear();
-  for (int octant = 0; octant < 8; octant++) {
-    // copy into octants and apply center translation
+  coordinates.reserve(first_octant.size() * 8);
+
+  // copy into octants and apply center translation
+  // top right quadrant is +x -y
+  for (int i = 0; i < first_octant.size(); i++) {
+    coordinates.emplace_back(center.x + first_octant[i].x,
+                             center.y - first_octant[i].y);
   }
-}
+  for (int i = first_octant.size() - 2; i >= 0; i--) {
+    coordinates.emplace_back(center.x + first_octant[i].y,
+                             center.y - first_octant[i].x);
+  }
+
+  // bottom right quadrant is +x +y
+  for (int i = 1; i < first_octant.size(); i++) {
+    coordinates.emplace_back(center.x + first_octant[i].y,
+                             center.y + first_octant[i].x);
+  }
+  for (int i = first_octant.size() - 2; i >= 0; i--) {
+    coordinates.emplace_back(center.x + first_octant[i].x,
+                             center.y + first_octant[i].y);
+  }
+
+  // bottom left quadrant is -x +y
+  for (int i = 1; i < first_octant.size(); i++) {
+    coordinates.emplace_back(center.x - first_octant[i].x,
+                             center.y + first_octant[i].y);
+  }
+  for (int i = first_octant.size() - 2; i >= 0; i--) {
+    coordinates.emplace_back(center.x - first_octant[i].y,
+                             center.y + first_octant[i].x);
+  }
+
+  // top left quadrant is -x -y
+  for (int i = 1; i < first_octant.size(); i++) {
+    coordinates.emplace_back(center.x - first_octant[i].y,
+                             center.y - first_octant[i].x);
+  }
+  for (int i = first_octant.size() - 2; i >= 1; i--) {
+    coordinates.emplace_back(center.x - first_octant[i].x,
+                             center.y - first_octant[i].y);
+  }
+
+  // all coordinates collected
 }
 
 void fill_array(std::vector<u_int8_t> &array,
                 const std::vector<cv::Point2i> &coordinates,
-                const cv::Mat &source);
+                const cv::Mat &source) {
+  array.clear();
+  array.reserve(coordinates.size());
+  for (const auto &coord : coordinates) {
+    array.emplace_back(source.at<uint8_t>(coord));
+  }
+}
+
+std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
+                                         const cv::Mat &threshold,
+                                         const cv::Mat &distances) {
+  cv::Size dim = init.size();
+  cv::Mat suppression_mask = cv::Mat(dim, CV_8UC1, 255);
+  
+  std::vector<Circle> ret;
+
+  // find highest point
+  uint8_t min, max;
+  cv::Point minLoc, maxLoc;
+
+  cv::minMaxLoc(init, &min, &max, &minLoc, &maxLoc, suppression_mask);
+
+  // create circle
+
+  // supress vicinity
+
+
+  // return
+                                         }

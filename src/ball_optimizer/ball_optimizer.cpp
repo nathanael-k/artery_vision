@@ -17,15 +17,15 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index) {
     // calculate CircleGradients for both cameras   
     
     
-    for (int i = 0; i < 100; ++i){
+    for (int i = 0; i < 10; ++i){
 
         Circle circleA = project_circle(0); 
         Circle circleB = project_circle(1); 
     
         CircleGradient gradA = get_gradient(circleA, 0, frame_index);
-        cv::waitKey(0);
+        //cv::waitKey(0);
         CircleGradient gradB = get_gradient(circleB, 1, frame_index);
-        cv::waitKey(0);
+        //cv::waitKey(0);
 
         std::cout << gradA.quality << "    " << gradB.quality << "\n";
 
@@ -77,6 +77,7 @@ CircleGradient BallOptimizer::get_gradient(const Circle& circle, uint8_t camera_
 
     cv::Rect src_area = cv::Rect(location - cv::Point(edge_2,edge_2), location + cv::Point(edge_2,edge_2));
     auto src_patch = stereo_camera.image_data(camera_index).threshold[frame_index](src_area);
+    src_patch.convertTo(src_patch, CV_32F, 1. / 255.);
 
     // rotate
     double scale = derivative_kernel_size/(6*radius);
