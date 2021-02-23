@@ -118,10 +118,10 @@ int main(int argc, char **argv) {
   std::vector<Circle> init_Circles_B = extract_init_circles(
       5, camera.image_data_B.initConv[0], camera.image_data_B.threshold[0],
       camera.image_data_B.distance[0]);
-  
 
   // cross correlate
-  auto distances = cross_correlate_circles(init_Circles_A, init_Circles_B, camera);
+  auto distances =
+      cross_correlate_circles(init_Circles_A, init_Circles_B, camera);
 
   std::cout << distances << std::endl;
 
@@ -130,46 +130,54 @@ int main(int argc, char **argv) {
 
   std::vector<Ball> end_balls, middle_balls, junction_balls;
   // sort balls into bins
-  for (const auto& ball : balls){
+  for (const auto &ball : balls) {
     if (ball.connections_A == 0 || ball.connections_B == 0) {
       // skip
-    }
-    else if (ball.connections_A == 1 && ball.connections_B == 1) {
+    } else if (ball.connections_A == 1 && ball.connections_B == 1) {
       end_balls.emplace_back(ball);
-    }
-    else if(ball.connections_A >= 3 ||  ball.connections_B >=3) {
+    } else if (ball.connections_A >= 3 || ball.connections_B >= 3) {
       junction_balls.emplace_back(ball);
-    }
-    else if(ball.connections_A == 2 || ball.connections_B == 2) {
+    } else if (ball.connections_A == 2 || ball.connections_B == 2) {
       middle_balls.emplace_back(ball);
     }
   }
 
-
   // pick the first ball and start to build line from there
-  Ball proto_ball = end_balls[0];
-  
+  Ball pre_ball = end_balls[0];
 
   // optimize first ball (with connections 1)
-  BallOptimizer optimizer(proto_ball, camera);
+  BallOptimizer optimizer(pre_ball, camera);
   optimizer.optimize(10, 0);
 
-  // find next ball
-  Ball next_ball = proto_ball.next_ball();
+  while (true) {
 
-  BallOptimizer next(next_ball, camera);
-  optimizer.optimize_constrained(10, 0, proto_ball, 1.5);
+    // find next ball
+    Ball next_ball = pre_ball.next_ball();
+    BallOptimizer next(next_ball, camera);
+    next.optimize_constrained(10, 0, pre_ball, 1.5);
+
+    // check if we reached a ball in the end balls
+    const Ball &match = find_ball_at(end_balls, next_ball);
+    if (&match != &next_ball) {
+      // found a match
+
+      std::cout << "Line finished!" << std::endl;
+
+      break;
+    }
+
+    std::cout << "Continuing line ..." << std::endl;
+
+    pre_ball = next_ball;
+  }
 
   // until we are inside an existing end ball
 
-
-  
   // initial maximal circles:
   Circle init_ball_A(Eigen::Vector2d(609, 924), 8, 0);
   Circle init_ball_B(Eigen::Vector2d(485, 959), 7, 0);
 
   cv::waitKey(0);
-
 
   return 0;
 }
