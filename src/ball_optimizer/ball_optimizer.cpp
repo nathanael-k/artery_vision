@@ -1,3 +1,7 @@
+#include "arteryNet.h"
+#include "opencv2/core.hpp"
+#include "opencv2/core/base.hpp"
+#include "opencv2/core/types.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "stereo_camera.h"
@@ -7,12 +11,15 @@
 BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera,
                              const Circle &circle_A, const Circle &circle_B)
     : ball(ball), stereo_camera(stereo_camera) {
-  triangulate_ball(circle_A, circle_B, stereo_camera);
+  ball = triangulate_ball(circle_A, circle_B, stereo_camera);
 };
+
+BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera)
+    : ball(ball), stereo_camera(stereo_camera){};
 
 void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index){
     // project initial coordinates of ball
-
+    // TODO: implement optimize
 };
 
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
@@ -33,7 +40,7 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index) {
     circleA.apply_gradient(gradA, 1);
     circleB.apply_gradient(gradB, 1);
 
-    triangulate_ball(circleA, circleB, stereo_camera);
+    ball = triangulate_ball(circleA, circleB, stereo_camera);
   }
 }
 
@@ -76,10 +83,8 @@ CircleGradient BallOptimizer::get_gradient(const Circle &circle,
   if (edge_2 < 16)
     edge_2 = 16;
 
-  cv::Rect src_area = cv::Rect(location - cv::Point(edge_2, edge_2),
-                               location + cv::Point(edge_2, edge_2));
-  auto src_patch =
-      stereo_camera.image_data(camera_index).threshold[frame_index](src_area);
+  cv::Mat src_patch = grab_region(location, edge_2, stereo_camera.image_data(camera_index).threshold[frame_index]);
+
   src_patch.convertTo(src_patch, CV_32F, 1. / 255.);
 
   // rotate
@@ -177,6 +182,28 @@ CircleGradient BallOptimizer::get_gradient(const Circle &circle,
       quality,      inner_rot_grad,     outer_rot_grad,     scale_1_grad,
       scale_2_grad, translation_1_grad, translation_2_grad,
   };
+}
+
+cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source) {
+  int min_x, min_y, max_x, max_y;
+  min_x = center.x - radius;
+  min_y = center.y - radius;
+  max_x = center.x + radius;
+  max_y = center.y + radius;
+
+  auto dim = source.size();
+
+  int g_min_x, g_min_y, g_max_x, g_max_y;
+  g_min_x = std::max(0, min_x);
+  g_min_y = std::max(0, min_y);
+  g_max_x = std::min(max_x, dim.width-1);
+  g_max_y = std::min(max_y, dim.height-1);
+
+  cv::Mat ret;
+  cv::Rect grab_area = cv::Rect(cv::Point(g_min_x, g_min_y), cv::Point(g_max_x, g_max_y));
+  cv::Mat buff = source(grab_area);
+  cv::copyMakeBorder(buff, ret, g_min_y - min_y, max_y - g_max_y, g_min_x - min_x, max_x - g_max_x, cv::BORDER_CONSTANT, 0);
+  return ret;
 }
 
 Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,

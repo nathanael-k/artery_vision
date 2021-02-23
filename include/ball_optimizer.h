@@ -17,6 +17,9 @@ public:
 
     BallOptimizer(Ball& ball, const StereoCamera& stereo_camera, const Circle& circle_A, const Circle& circle_B);
 
+    BallOptimizer(Ball& ball, const StereoCamera& stereo_camera);
+
+
     // optimize the properties of ball in reference to the image data captured through stereo cameras
     void optimize(const uint16_t steps, const uint8_t frame_index);
 
@@ -42,6 +45,9 @@ const StereoCamera& stereo_camera;
     
 
 };
+
+// copy out a region, expanding borders if needed
+cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source);
 
 // based on a circle for each camera, estimate the best fit of a ball in 3d space
     Ball triangulate_ball(const Circle& circle_A, const Circle& circle_B,

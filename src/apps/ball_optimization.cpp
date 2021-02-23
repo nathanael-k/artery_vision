@@ -129,14 +129,21 @@ int main(int argc, char **argv) {
   auto balls = init_balls(init_Circles_A, init_Circles_B, camera);
 
   // pick the first ball and start to build line from there
+  Ball proto_ball = balls[0];
 
   // optimize first ball (with connections 1)
+  BallOptimizer optimizer(proto_ball, camera);
+  optimizer.step(1, 0);
 
   // find next ball
+  Ball next_ball = proto_ball.next_ball();
+
+  BallOptimizer next(next_ball, camera);
+  next.step(1,0);
 
   // until we are close to an existing ball
 
-  
+
   
   // initial maximal circles:
   Circle init_ball_A(Eigen::Vector2d(609, 924), 8, 0);
@@ -148,7 +155,7 @@ int main(int argc, char **argv) {
   Ball ballon;
 
   // get a ball
-  BallOptimizer optimizer(ballon, camera, init_ball_A, init_ball_B);
+  //BallOptimizer optimizer(ballon, camera, init_ball_A, init_ball_B);
 
   optimizer.step(1.0, 0);
 

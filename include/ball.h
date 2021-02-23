@@ -9,6 +9,10 @@ struct Ball {
     Eigen::Vector3d center_m;
     double radius_m;
     double confidence;
+
+    Ball next_ball() {
+        return {direction, center_m - direction * radius_m * 1.5, radius_m, 0};
+    }
 };
 
 struct CircleGradient {
@@ -49,22 +53,17 @@ Circle(Eigen::Vector2d location_px, double radius_px, Eigen::Vector2d point_at_p
     }
 
     void set_angle_deg(double new_angle_deg) {
-        if (new_angle_deg > 90)
-            angle_deg_ = new_angle_deg - 180;
-        else if (new_angle_deg <= -90)
-            angle_deg_ = new_angle_deg + 180;
+        if (new_angle_deg >= 360)
+            angle_deg_ = new_angle_deg;
+        else if (new_angle_deg < 0)
+            angle_deg_ = new_angle_deg + 360;
         else
             angle_deg_ = new_angle_deg;
     }
 
     void set_angle_rad(double new_angle_rad) {
         double new_angle_deg = new_angle_rad * 180 * M_1_PI;
-        if (new_angle_deg > 90)
-            angle_deg_ = new_angle_deg - 180;
-        else if (new_angle_deg <= -90)
-            angle_deg_ = new_angle_deg + 180;
-        else
-            angle_deg_ = new_angle_deg;
+        set_angle_deg(new_angle_deg);
     }
 
     Eigen::Vector2d direction_px() const {
