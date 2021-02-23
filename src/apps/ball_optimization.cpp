@@ -3,6 +3,7 @@
 
 #include <ball_optimizer.h>
 #include <imageData2.h>
+#include <ostream>
 #include <stereo_camera.h>
 
 int kernel_radius = 11;
@@ -109,10 +110,37 @@ int main(int argc, char **argv) {
   cv::createTrackbar("Vis. Src:", "", &what, 6, changeVisual);
   cv::createTrackbar("Kernel Size", "", &kernel_radius, 21, nullptr);
 
+  // auto init circles:
+  std::vector<Circle> init_Circles_A = extract_init_circles(
+      5, camera.image_data_A.initConv[0], camera.image_data_A.threshold[0],
+      camera.image_data_A.distance[0]);
+
+  std::vector<Circle> init_Circles_B = extract_init_circles(
+      5, camera.image_data_B.initConv[0], camera.image_data_B.threshold[0],
+      camera.image_data_B.distance[0]);
+  
+
+  // cross correlate
+  auto distances = cross_correlate_circles(init_Circles_A, init_Circles_B, camera);
+
+  std::cout << distances << std::endl;
+
+  // based on cross correlation, build balls
+  auto balls = init_balls(init_Circles_A, init_Circles_B, camera);
+
+  // pick the first ball and start to build line from there
+
+  // optimize first ball (with connections 1)
+
+  // find next ball
+
+  // until we are close to an existing ball
+
+  
+  
   // initial maximal circles:
   Circle init_ball_A(Eigen::Vector2d(609, 924), 8, 0);
   Circle init_ball_B(Eigen::Vector2d(485, 959), 7, 0);
-
 
   cv::waitKey(0);
 
@@ -125,11 +153,9 @@ int main(int argc, char **argv) {
   optimizer.step(1.0, 0);
 
   // find adjacent circles
-  std::vector<Circle> adj_circles = find_adjacent_circles(
-      init_ball_B,
-      camera.image_data_B.distance[0], camera.image_data_B.threshold[0]);
-
-
+  std::vector<Circle> adj_circles =
+      find_adjacent_circles(init_ball_B, camera.image_data_B.distance[0],
+                            camera.image_data_B.threshold[0]);
 
   return 0;
 }
