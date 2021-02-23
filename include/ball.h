@@ -37,7 +37,7 @@ Circle(Eigen::Vector2d location_px, double radius_px, double angle_deg) :
 Circle(Eigen::Vector2d location_px, double radius_px, Eigen::Vector2d point_at_px) : 
     location_px(location_px), radius_px(radius_px) 
 {
-    point_at_px(point_at_px);
+    point_at(point_at_px);
 }
 
     double angle_deg() const {
@@ -74,9 +74,9 @@ Circle(Eigen::Vector2d location_px, double radius_px, Eigen::Vector2d point_at_p
         return direction_px;
     }
 
-    void point_at_px(Eigen::Vector2d point_at_px) {
+    void point_at(Eigen::Vector2d point_at_px) {
         Eigen::Vector2d direction = point_at_px - location_px;
-        set_angle_deg(atan2(direction.x(), direction.y()));
+        set_angle_rad(atan2(direction.x(), -direction.y()));
     }
 
     void apply_gradient(const CircleGradient& gradient, double dx) {

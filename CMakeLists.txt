@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 enable_testing()
 add_subdirectory( test )
 
-find_package(OpenCV REQUIRED PATHS /home/nate/code/opencv/build NO_DEFAULT_PATH)
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(OpenCV REQUIRED PATHS /home/nk/Desktop/opencv_build_2 NO_DEFAULT_PATH)
+find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
@@ -36,17 +36,12 @@ target_compile_features(imageData PUBLIC cxx_std_11)
 target_include_directories(imageData2 PUBLIC include)
 target_compile_features(imageData2 PUBLIC cxx_std_11)
 
-target_include_directories(ball PUBLIC include)
-target_compile_features(ball PUBLIC cxx_std_11)
-
 target_include_directories(stereo_camera PUBLIC include)
 target_compile_features(stereo_camera PUBLIC cxx_std_11)
 
-target_include_directories(ball_optimizer PUBLIC include)
-target_compile_features(ball_optimizer PUBLIC cxx_std_11)
-
 target_include_directories(test_camera PUBLIC test)
 
+include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(include)
 include_directories(test)
