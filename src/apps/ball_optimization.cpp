@@ -128,20 +128,39 @@ int main(int argc, char **argv) {
   // based on cross correlation, build balls
   auto balls = init_balls(init_Circles_A, init_Circles_B, camera);
 
+  std::vector<Ball> end_balls, middle_balls, junction_balls;
+  // sort balls into bins
+  for (const auto& ball : balls){
+    if (ball.connections_A == 0 || ball.connections_B == 0) {
+      // skip
+    }
+    else if (ball.connections_A == 1 && ball.connections_B == 1) {
+      end_balls.emplace_back(ball);
+    }
+    else if(ball.connections_A >= 3 ||  ball.connections_B >=3) {
+      junction_balls.emplace_back(ball);
+    }
+    else if(ball.connections_A == 2 || ball.connections_B == 2) {
+      middle_balls.emplace_back(ball);
+    }
+  }
+
+
   // pick the first ball and start to build line from there
-  Ball proto_ball = balls[0];
+  Ball proto_ball = end_balls[0];
+  
 
   // optimize first ball (with connections 1)
   BallOptimizer optimizer(proto_ball, camera);
-  optimizer.step(1, 0);
+  optimizer.optimize(10, 0);
 
   // find next ball
   Ball next_ball = proto_ball.next_ball();
 
   BallOptimizer next(next_ball, camera);
-  next.step(1,0);
+  optimizer.optimize_constrained(10, 0, proto_ball, 1.5);
 
-  // until we are close to an existing ball
+  // until we are inside an existing end ball
 
 
   
@@ -151,18 +170,6 @@ int main(int argc, char **argv) {
 
   cv::waitKey(0);
 
-  // random init ball
-  Ball ballon;
-
-  // get a ball
-  //BallOptimizer optimizer(ballon, camera, init_ball_A, init_ball_B);
-
-  optimizer.step(1.0, 0);
-
-  // find adjacent circles
-  std::vector<Circle> adj_circles =
-      find_adjacent_circles(init_ball_B, camera.image_data_B.distance[0],
-                            camera.image_data_B.threshold[0]);
 
   return 0;
 }

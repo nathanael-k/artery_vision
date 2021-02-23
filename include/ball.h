@@ -10,8 +10,16 @@ struct Ball {
     double radius_m;
     double confidence;
 
+    int connections_A = -1;
+    int connections_B = -1;
+
     Ball next_ball() {
         return {direction, center_m - direction * radius_m * 1.5, radius_m, 0};
+    }
+
+    void project_to_surface(const Ball& other, double radius_factor) {
+        Eigen::Vector3d delta = (center_m - other.center_m).normalized() * other.radius_m * radius_factor;
+        center_m = other.center_m + delta;
     }
 };
 

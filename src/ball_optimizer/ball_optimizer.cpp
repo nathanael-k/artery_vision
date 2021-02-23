@@ -17,31 +17,45 @@ BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera,
 BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera)
     : ball(ball), stereo_camera(stereo_camera){};
 
-void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index){
-    // project initial coordinates of ball
-    // TODO: implement optimize
+void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
+  for (int i = 0; i < steps; i++) {
+    step(1.0, frame_index);
+  }
 };
+
+void BallOptimizer::optimize_constrained(const uint16_t steps,
+                                         const uint8_t frame_index,
+                                         const Ball &constrain,
+                                         double radius_factor) {
+                                           for (int i = 0; i < steps; i++) {
+    step_constrained(1.0, frame_index, constrain, radius_factor);
+  }
+                                         }
 
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
   // calculate CircleGradients for both cameras
 
-  for (int i = 0; i < 10; ++i) {
+  Circle circleA = project_circle(0);
+  Circle circleB = project_circle(1);
 
-    Circle circleA = project_circle(0);
-    Circle circleB = project_circle(1);
+  CircleGradient gradA = get_gradient(circleA, 0, frame_index);
+  // cv::waitKey(0);
+  CircleGradient gradB = get_gradient(circleB, 1, frame_index);
+  // cv::waitKey(0);
 
-    CircleGradient gradA = get_gradient(circleA, 0, frame_index);
-    // cv::waitKey(0);
-    CircleGradient gradB = get_gradient(circleB, 1, frame_index);
-    // cv::waitKey(0);
+  std::cout << gradA.quality << "    " << gradB.quality << "\n";
 
-    std::cout << gradA.quality << "    " << gradB.quality << "\n";
+  circleA.apply_gradient(gradA, 1);
+  circleB.apply_gradient(gradB, 1);
 
-    circleA.apply_gradient(gradA, 1);
-    circleB.apply_gradient(gradB, 1);
+  ball = triangulate_ball(circleA, circleB, stereo_camera);
+}
 
-    ball = triangulate_ball(circleA, circleB, stereo_camera);
-  }
+void BallOptimizer::step_constrained(const double dx, const uint8_t frame_index,
+                                     const Ball &constrain,
+                                     double radius_factor) {
+  step(dx, frame_index);
+  ball.project_to_surface(constrain, radius_factor);
 }
 
 Circle BallOptimizer::project_circle(uint8_t camera_index) const {
@@ -83,7 +97,9 @@ CircleGradient BallOptimizer::get_gradient(const Circle &circle,
   if (edge_2 < 16)
     edge_2 = 16;
 
-  cv::Mat src_patch = grab_region(location, edge_2, stereo_camera.image_data(camera_index).threshold[frame_index]);
+  cv::Mat src_patch = grab_region(
+      location, edge_2,
+      stereo_camera.image_data(camera_index).threshold[frame_index]);
 
   src_patch.convertTo(src_patch, CV_32F, 1. / 255.);
 
@@ -196,13 +212,15 @@ cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source) {
   int g_min_x, g_min_y, g_max_x, g_max_y;
   g_min_x = std::max(0, min_x);
   g_min_y = std::max(0, min_y);
-  g_max_x = std::min(max_x, dim.width-1);
-  g_max_y = std::min(max_y, dim.height-1);
+  g_max_x = std::min(max_x, dim.width - 1);
+  g_max_y = std::min(max_y, dim.height - 1);
 
   cv::Mat ret;
-  cv::Rect grab_area = cv::Rect(cv::Point(g_min_x, g_min_y), cv::Point(g_max_x, g_max_y));
+  cv::Rect grab_area =
+      cv::Rect(cv::Point(g_min_x, g_min_y), cv::Point(g_max_x, g_max_y));
   cv::Mat buff = source(grab_area);
-  cv::copyMakeBorder(buff, ret, g_min_y - min_y, max_y - g_max_y, g_min_x - min_x, max_x - g_max_x, cv::BORDER_CONSTANT, 0);
+  cv::copyMakeBorder(buff, ret, g_min_y - min_y, max_y - g_max_y,
+                     g_min_x - min_x, max_x - g_max_x, cv::BORDER_CONSTANT, 0);
   return ret;
 }
 
@@ -249,6 +267,8 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
   ball.radius_m = radius;
   ball.direction = better_direction;
   ball.confidence = 1 / (distance + 0.1);
+  ball.connections_A = circle_A.connections;
+  ball.connections_B = circle_B.connections;
 
   return ball;
 }
