@@ -31,8 +31,7 @@ const StereoCamera& stereo_camera;
     // generates a circle that represent the projection of a ball onto the image of the camera
     Circle project_circle(uint8_t camera_index) const;
 
-    // based on a circle for each camera, estimate the best fit of a ball in 3d space
-    void triangulate_ball(const Circle& circle_A, const Circle& circle_B);
+    
 
     // project the ball to the two circles
     void project_circles(Circle& out_circle_A, Circle& out_circle_B);
@@ -43,3 +42,7 @@ const StereoCamera& stereo_camera;
     
 
 };
+
+// based on a circle for each camera, estimate the best fit of a ball in 3d space
+    Ball triangulate_ball(const Circle& circle_A, const Circle& circle_B,
+                      const StereoCamera &stereo_camera);

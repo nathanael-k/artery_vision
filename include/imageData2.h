@@ -1,8 +1,7 @@
 //
 // Created by nate on 19.09.20.
 //
-#ifndef ARTERY_VISION_IMAGEDATA_H
-#define ARTERY_VISION_IMAGEDATA_H
+#pragma once
 
 #include "opencv2/core/types.hpp"
 #include "opencv2/core/utility.hpp"
@@ -211,4 +210,3 @@ std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
                                          const cv::Mat &threshold,
                                          const cv::Mat &distances);
 
-#endif // ARTERY_VISION_IMAGEDATA_H

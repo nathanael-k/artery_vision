@@ -9,7 +9,9 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/ximgproc.hpp"
+#include "stereo_camera.h"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <ball.h>
 #include <bits/stdint-uintn.h>
 #include <cstddef>
@@ -318,7 +320,7 @@ Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
   assert(threshold.at<uint8_t>(coord) > 0);
 
   // select radius based on distance information
-  uint8_t radius = distances.at<u_int8_t>(coord);
+  float radius = distances.at<float>(coord);
   assert(radius > 3);
 
   std::vector<Circle> circles =
@@ -359,6 +361,9 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
     circle_values.emplace_back(circle_values[start]);
     start++;
   }
+
+  // append a 0 so that the following loop ends by closing connection
+  circle_values.emplace_back(circle_values[start]);
 
   bool in_connection = false;
   size_t connection_start = start;
@@ -477,19 +482,27 @@ std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
                                          const cv::Mat &distances) {
   cv::Size dim = init.size();
   cv::Mat suppression_mask = cv::Mat(dim, CV_8UC1, 255);
-  
+
   std::vector<Circle> ret;
 
-  // find highest point
-  uint8_t min, max;
-  cv::Point minLoc, maxLoc;
+  for (int i = 0; i < count; i++) {
 
-  cv::minMaxLoc(init, &min, &max, &minLoc, &maxLoc, suppression_mask);
+    // find highest point
+    double min, max;
+    cv::Point minLoc, maxLoc;
 
-  // create circle
+    cv::minMaxLoc(init, &min, &max, &minLoc, &maxLoc, suppression_mask);
 
-  // supress vicinity
+    // create circle
+    if (threshold.at<uint8_t>(maxLoc) > 0 && distances.at<float>(maxLoc) > 3 )
+      ret.emplace_back(initialize_Circle(maxLoc, distances, threshold));
 
+    float radius = distances.at<float>(maxLoc);
 
+    // supress vicinity
+    cv::circle(suppression_mask, maxLoc, radius * 2, 0, cv::FILLED);
+  }
   // return
-                                         }
+  return ret;
+}
+
