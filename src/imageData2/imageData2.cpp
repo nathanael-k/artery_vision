@@ -177,6 +177,13 @@ void imageData::renderPoint(Vector3d point, int label, int index) {
   renderPoint(cam.projectPoint(point), label, index);
 }
 
+void imageData::renderBall(const Ball &ball, int index) {
+  Circle circle = project_circle(ball, cam);
+  cv::circle(visualisation[index],
+             cv::Point(circle.location_px.x(), circle.location_px.y()), circle.radius_px,
+             CV_RGB(100, 100, 255), 1);
+}
+
 int correlate(const cv::Mat &ref, const Camera &leadCam, const Camera &refCam,
               const Vector2d &leadPixel, const Vector2d &refPixel,
               Vector2d &bestPixel, Vector3d &point, double &distance, int range,
@@ -494,7 +501,7 @@ std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
     cv::minMaxLoc(init, &min, &max, &minLoc, &maxLoc, suppression_mask);
 
     // create circle
-    if (threshold.at<uint8_t>(maxLoc) > 0 && distances.at<float>(maxLoc) > 3 )
+    if (threshold.at<uint8_t>(maxLoc) > 0 && distances.at<float>(maxLoc) > 3)
       ret.emplace_back(initialize_Circle(maxLoc, distances, threshold));
 
     float radius = distances.at<float>(maxLoc);
@@ -505,4 +512,3 @@ std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
   // return
   return ret;
 }
-

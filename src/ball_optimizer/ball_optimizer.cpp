@@ -1,4 +1,4 @@
-#include "arteryNet.h"
+#include "arteryNet2.h"
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
 #include "opencv2/core/types.hpp"
@@ -35,8 +35,8 @@ void BallOptimizer::optimize_constrained(const uint16_t steps,
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
   // calculate CircleGradients for both cameras
 
-  Circle circleA = project_circle(0);
-  Circle circleB = project_circle(1);
+  Circle circleA = project_circle(ball, stereo_camera.camera_A);
+  Circle circleB = project_circle(ball, stereo_camera.camera_B);
 
   CircleGradient gradA = get_gradient(circleA, 0, frame_index);
   // cv::waitKey(0);
@@ -58,20 +58,7 @@ void BallOptimizer::step_constrained(const double dx, const uint8_t frame_index,
   ball.project_to_surface(constrain, radius_factor);
 }
 
-Circle BallOptimizer::project_circle(uint8_t camera_index) const {
-  assert(camera_index == 0 || camera_index == 1);
 
-  const Camera &cam =
-      (camera_index) ? stereo_camera.camera_B : stereo_camera.camera_A;
-
-  Circle ret = {cam.projectPoint(ball.center_m),
-                cam.estimate_radius_image_px(ball.center_m, ball.radius_m), 0};
-
-  Eigen::Vector2d A_direction_px =
-      cam.projectPoint(ball.center_m + ball.direction) - ret.location_px;
-  ret.set_angle_rad(atan2(A_direction_px.x(), -A_direction_px.y()));
-  return ret;
-}
 
 CircleGradient BallOptimizer::get_gradient(const Circle &circle,
                                            uint8_t camera_index,

@@ -38,12 +38,9 @@ private:
   void step_constrained(const double dx, const uint8_t frame_index,
                         const Ball &constrain, double radius_factor);
 
-  // generates a circle that represent the projection of a ball onto the image
-  // of the camera
-  Circle project_circle(uint8_t camera_index) const;
-
+ 
   // project the ball to the two circles
-  void project_circles(Circle &out_circle_A, Circle &out_circle_B);
+  // void project_circle(Circle &out_circle_A, Circle &out_circle_B);
 
   // generates the gradient of the ball in camera coordinates
   CircleGradient get_gradient(const Circle &circle, const uint8_t camera_index,

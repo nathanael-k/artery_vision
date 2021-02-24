@@ -1,0 +1,14 @@
+import bpy
+path = bpy.path.abspath("//../out/graph.txt")
+graph_coll = bpy.data.collections.get("graph spheres")
+
+if not graph_coll:
+    graph_coll = bpy.data.collections.new(name="graph spheres")
+    bpy.context.scene.collection.children.link(graph_coll)
+
+for line in open(path):
+    x, y, z, r = line.split(" ")
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=float(r), location=(float(x),float(y),float(z))) 
+    obj = bpy.context.active_object
+    bpy.ops.collection.objects_remove_all()
+    graph_coll.objects.link(obj)

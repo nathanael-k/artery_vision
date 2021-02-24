@@ -1,3 +1,4 @@
+#include <arteryNet2.h>
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 
@@ -62,10 +63,10 @@ void changeVisual(int pos, void *) {
 void thresholdCurrent(int state, void *) {
   // if button got pressed down
   if (state == 0) {
-    camera.image_data_A.apply_threshold(camera.current_displayed_frame, 128,
-                                        255);
-    camera.image_data_B.apply_threshold(camera.current_displayed_frame, 128,
-                                        255);
+    //camera.image_data_A.apply_threshold(camera.current_displayed_frame, 128,
+            //                            255);
+    //camera.image_data_B.apply_threshold(camera.current_displayed_frame, 128,
+             //                           255);
     displayVisual();
   }
 }
@@ -110,14 +111,17 @@ int main(int argc, char **argv) {
   cv::createTrackbar("Vis. Src:", "", &what, 6, changeVisual);
   cv::createTrackbar("Kernel Size", "", &kernel_radius, 21, nullptr);
 
+
+  int frame = 4;
+
   // auto init circles:
   std::vector<Circle> init_Circles_A = extract_init_circles(
-      5, camera.image_data_A.initConv[0], camera.image_data_A.threshold[0],
-      camera.image_data_A.distance[0]);
+      5, camera.image_data_A.initConv[frame], camera.image_data_A.threshold[frame],
+      camera.image_data_A.distance[frame]);
 
   std::vector<Circle> init_Circles_B = extract_init_circles(
-      5, camera.image_data_B.initConv[0], camera.image_data_B.threshold[0],
-      camera.image_data_B.distance[0]);
+      5, camera.image_data_B.initConv[frame], camera.image_data_B.threshold[frame],
+      camera.image_data_B.distance[frame]);
 
   // cross correlate
   auto distances =
@@ -147,35 +151,48 @@ int main(int argc, char **argv) {
 
   // optimize first ball (with connections 1)
   BallOptimizer optimizer(pre_ball, camera);
-  optimizer.optimize(10, 0);
+  optimizer.optimize(10, frame);
+
+  arteryGraph graph(pre_ball); 
+
+  arteryNode* curr_node = graph.root;
+  arteryNode& root = *curr_node;
+  arteryNode* next_node = nullptr;
 
   while (true) {
 
     // find next ball
-    Ball next_ball = pre_ball.next_ball();
+    Ball next_ball = curr_node->ball.next_ball();
     BallOptimizer next(next_ball, camera);
-    next.optimize_constrained(10, 0, pre_ball, 1.5);
+    next.optimize_constrained(10, frame, pre_ball, 1.5);
 
     // check if we reached a ball in the end balls
     const Ball &match = find_ball_at(end_balls, next_ball);
     if (&match != &next_ball) {
       // found a match
-
       std::cout << "Line finished!" << std::endl;
+      curr_node->addNode(match);
 
       break;
     }
 
     std::cout << "Continuing line ..." << std::endl;
+    next_node = curr_node->addNode(next_ball);
+    //
 
     pre_ball = next_ball;
+    curr_node = next_node;
   }
 
-  // until we are inside an existing end ball
 
-  // initial maximal circles:
-  Circle init_ball_A(Eigen::Vector2d(609, 924), 8, 0);
-  Circle init_ball_B(Eigen::Vector2d(485, 959), 7, 0);
+  camera.image_data_A.drawGraph(root, frame);
+  camera.image_data_B.drawGraph(root, frame);
+
+  std::ofstream file;
+  file.open("../data/out/graph.txt");
+
+  write_to_file(root, file);
+  file.close();
 
   cv::waitKey(0);
 

@@ -41,3 +41,5 @@ Eigen::MatrixXd cross_correlate_circles(const std::vector<Circle> &circles_A,
 std::vector<Ball> init_balls(const std::vector<Circle> &circles_A,
                                         const std::vector<Circle> &circles_B,
                                         const StereoCamera &camera);
+
+Circle project_circle(const Ball&, const Camera& cam);

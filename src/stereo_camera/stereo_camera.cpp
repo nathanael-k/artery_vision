@@ -97,3 +97,14 @@ std::vector<Ball> init_balls(const std::vector<Circle> &circles_A,
 
   return ret;
 }
+
+Circle project_circle(const Ball& ball, const Camera& cam) {
+  
+  Circle ret = {cam.projectPoint(ball.center_m),
+                cam.estimate_radius_image_px(ball.center_m, ball.radius_m), 0};
+
+  Eigen::Vector2d A_direction_px =
+      cam.projectPoint(ball.center_m + ball.direction) - ret.location_px;
+  ret.set_angle_rad(atan2(A_direction_px.x(), -A_direction_px.y()));
+  return ret;
+}

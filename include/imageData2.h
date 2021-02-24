@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <vector>
 
-#include <arteryNet.h>
+#include <arteryNet2.h>
 #include <ball.h>
 #include <camera.h>
 
@@ -61,13 +61,14 @@ public:
 
   // starting from node, draw everything connected to it on layer index
   void drawGraph(arteryNode &node, int index = 0) {
-    renderPoint(node.position, node.index, index);
+    // renderPoint(node.ball.center_m, node.index, index);
+    renderBall(node.ball, index);
     int i = 1;
     if (node.index == 0)
       i = 0;
 
     for (; i < node.degree; i++) {
-      renderLine(node.position, node.paths[i]->position, index);
+      renderLine(node.ball.center_m, node.paths[i]->ball.center_m, index);
       drawGraph(*node.paths[i], index);
     }
   }
@@ -88,6 +89,8 @@ public:
 
   // draw a circle in 3d coordinates, write label if label is >= 0
   void renderPoint(Vector3d point, int label = -1, int index = 0);
+
+  void renderBall(const Ball& ball, int index);
 
   // #### methods for data preparation
 
@@ -115,32 +118,7 @@ public:
   }
 
   // makes sure that our endpoint buffer is as required (paint it) at index
-  void prepareEndpoints(int index = 0);
-
-  // write everything connected to that node to a file for further processing
-  void write_to_file(arteryNode &node, std::ofstream &handle) {
-    handle << node.position.x() << " " << node.position.y() << " "
-           << node.position.z() << '\n';
-    int i = 1;
-    if (node.index == 0)
-      i = 0;
-
-    for (; i < node.degree; i++) {
-      write_to_file(*node.paths[i], handle);
-    }
-  }
-
-  // for convenience
-  void write_to_file(std::string &file_name) {
-    std::ofstream file;
-    file.open("graph.txt");
-    write_to_file(*graph.root, file);
-  }
-
-  void apply_threshold(int frame, double thresh, double maxval) {
-    cv::threshold(source[frame], threshold[frame], thresh, maxval,
-                  cv::THRESH_BINARY);
-  }
+  void prepareEndpoints(int index = 0); 
 };
 
 // a combination that we already know correlates, but we keep it for later
