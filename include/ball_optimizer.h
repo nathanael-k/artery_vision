@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ball.h>
+#include <bits/stdint-uintn.h>
 #include <imageData2.h>
 #include <stereo_camera.h>
 
@@ -27,6 +28,9 @@ public:
   void optimize_constrained(const uint16_t steps, const uint8_t frame_index,
                             const Ball &constrain, double radius_factor);
 
+std::vector<Circle> report_adjacent_circles(
+    bool check_cam_B, const double radius_factor, const size_t frame_index) const;
+
 private:
   Ball &ball;
   const StereoCamera &stereo_camera;
@@ -45,6 +49,8 @@ private:
   // generates the gradient of the ball in camera coordinates
   CircleGradient get_gradient(const Circle &circle, const uint8_t camera_index,
                               const uint8_t frame_index) const;
+
+  
 };
 
 // copy out a region, expanding borders if needed
@@ -54,3 +60,5 @@ cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source);
 // space
 Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
                       const StereoCamera &stereo_camera);
+
+Circle find_furthest_circle(const std::vector<Circle>& circles, const Circle& query_circle);

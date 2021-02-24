@@ -61,7 +61,6 @@ public:
 
   // starting from node, draw everything connected to it on layer index
   void drawGraph(arteryNode &node, int index = 0) {
-    // renderPoint(node.ball.center_m, node.index, index);
     renderBall(node.ball, index);
     int i = 1;
     if (node.index == 0)
@@ -181,6 +180,7 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
                                           const cv::Mat &threshold);
 
 std::vector<Circle> find_adjacent_circles(const Circle &circle,
+                                          const double radius_factor, 
                                           const cv::Mat &distances,
                                           const cv::Mat &threshold);
 

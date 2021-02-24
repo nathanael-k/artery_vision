@@ -374,21 +374,36 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
 
   bool in_connection = false;
   size_t connection_start = start;
+  float max_distance = 0;
+  size_t max_index;
 
   for (size_t index = start; index < circle_values.size(); index++) {
     if (circle_values[index] == 0) {
       if (in_connection) {
         // close connection and generate circle
-        in_connection = false;
-        size_t center = (connection_start + index - 1) / 2;
-        Eigen::Vector2d position_px(coordinates[center].x,
-                                    coordinates[center].y);
-        double radius_px = distances.at<float>(coordinates[center]);
+        
+
+
+        // center of the circle is the maximum value of distances
+
+        Eigen::Vector2d position_px(coordinates[max_index].x,
+                                    coordinates[max_index].y);
+        float radius_px = max_distance;
+        assert (radius_px > 0);
         ret.emplace_back(position_px, radius_px,
                          Eigen::Vector2d(coord.x, coord.y));
+
+        in_connection = false;
+        max_distance = 0;
       }
     } else {
-      // we have a zero
+      // we have a one
+      size_t capped_index = index % count;
+      float distance = distances.at<float>(coordinates[capped_index]);
+      if (distance > max_distance) {
+        max_distance = distance;
+        max_index = capped_index;
+      }
       if (!in_connection) {
         in_connection = true;
         connection_start = index;
@@ -400,10 +415,11 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
 }
 
 std::vector<Circle> find_adjacent_circles(const Circle &circle,
+                                          const double radius_factor,
                                           const cv::Mat &distances,
                                           const cv::Mat &threshold) {
   cv::Point2i center(circle.location_px.x(), circle.location_px.y());
-  return find_adjacent_circles(center, circle.radius_px * 1.5, distances,
+  return find_adjacent_circles(center, circle.radius_px * radius_factor, distances,
                                threshold);
 }
 

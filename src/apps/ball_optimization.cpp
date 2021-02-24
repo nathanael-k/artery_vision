@@ -1,8 +1,9 @@
-#include <arteryNet2.h>
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+#include <arteryNet2.h>
 
 #include <ball_optimizer.h>
+#include <cstddef>
 #include <imageData2.h>
 #include <ostream>
 #include <stereo_camera.h>
@@ -63,10 +64,10 @@ void changeVisual(int pos, void *) {
 void thresholdCurrent(int state, void *) {
   // if button got pressed down
   if (state == 0) {
-    //camera.image_data_A.apply_threshold(camera.current_displayed_frame, 128,
-            //                            255);
-    //camera.image_data_B.apply_threshold(camera.current_displayed_frame, 128,
-             //                           255);
+    // camera.image_data_A.apply_threshold(camera.current_displayed_frame, 128,
+    //                            255);
+    // camera.image_data_B.apply_threshold(camera.current_displayed_frame, 128,
+    //                           255);
     displayVisual();
   }
 }
@@ -111,17 +112,18 @@ int main(int argc, char **argv) {
   cv::createTrackbar("Vis. Src:", "", &what, 6, changeVisual);
   cv::createTrackbar("Kernel Size", "", &kernel_radius, 21, nullptr);
 
-
   int frame = 4;
 
   // auto init circles:
-  std::vector<Circle> init_Circles_A = extract_init_circles(
-      5, camera.image_data_A.initConv[frame], camera.image_data_A.threshold[frame],
-      camera.image_data_A.distance[frame]);
+  std::vector<Circle> init_Circles_A =
+      extract_init_circles(5, camera.image_data_A.initConv[frame],
+                           camera.image_data_A.threshold[frame],
+                           camera.image_data_A.distance[frame]);
 
-  std::vector<Circle> init_Circles_B = extract_init_circles(
-      5, camera.image_data_B.initConv[frame], camera.image_data_B.threshold[frame],
-      camera.image_data_B.distance[frame]);
+  std::vector<Circle> init_Circles_B =
+      extract_init_circles(5, camera.image_data_B.initConv[frame],
+                           camera.image_data_B.threshold[frame],
+                           camera.image_data_B.distance[frame]);
 
   // cross correlate
   auto distances =
@@ -153,40 +155,83 @@ int main(int argc, char **argv) {
   BallOptimizer optimizer(pre_ball, camera);
   optimizer.optimize(10, frame);
 
-  arteryGraph graph(pre_ball); 
+  arteryGraph graph(pre_ball);
 
-  arteryNode* curr_node = graph.root;
-  arteryNode& root = *curr_node;
-  arteryNode* next_node = nullptr;
+  arteryNode *curr_node = graph.root;
+  Circle last_circle_A = project_circle(curr_node->ball, camera.camera_A);
+  Circle last_circle_B = project_circle(curr_node->ball, camera.camera_B);
+
+  arteryNode &root = *curr_node;
+  arteryNode *next_node = nullptr;
+
+  // we know we start at an end, so just proceed to next
+  Ball next_ball = curr_node->ball.next_ball();
 
   while (true) {
+    camera.image_data_A.drawGraph(root, frame);
+    camera.image_data_B.drawGraph(root, frame);
+    displayVisual();
+    cv::waitKey();
 
-    // find next ball
-    Ball next_ball = curr_node->ball.next_ball();
+    // classify next ball
     BallOptimizer next(next_ball, camera);
-    next.optimize_constrained(10, frame, pre_ball, 1.5);
+    auto Circles_A = next.report_adjacent_circles(false, 2, frame);
+    auto Circles_B = next.report_adjacent_circles(true, 2, frame);
+    size_t connections = std::max(Circles_A.size(), Circles_B.size());
 
-    // check if we reached a ball in the end balls
-    const Ball &match = find_ball_at(end_balls, next_ball);
-    if (&match != &next_ball) {
-      // found a match
-      std::cout << "Line finished!" << std::endl;
-      curr_node->addNode(match);
+    if (connections == 0) {
+      // that is indeed strange and should not really happen, probably the graph
+      // is not connected or maybe the thresholding is too aggressive
+      assert(false);
+    }
 
+    // if we have one connection on both, it seems to be a dead end
+    // we should check if we already found that, and then end this path
+    if (connections == 1) {
+      next.optimize_constrained(10, frame, pre_ball, 1.5);
+      std::cout << "Continuing line ..." << std::endl;
+      next_node = curr_node->addNode(next_ball);
+      curr_node = next_node;
+      
       break;
     }
 
-    std::cout << "Continuing line ..." << std::endl;
-    next_node = curr_node->addNode(next_ball);
-    //
+    // the normal path case, figure out which of the circles is not the last
+    // ball then we can create a new ball just there
+    if (connections == 2) {
+      // add that easy line ball:
 
-    pre_ball = next_ball;
-    curr_node = next_node;
+      next.optimize_constrained(10, frame, pre_ball, 1.5);
+      std::cout << "Continuing line ..." << std::endl;
+      next_node = curr_node->addNode(next_ball);
+      curr_node = next_node;
+
+      // go for the next ball
+      Circles_A = next.report_adjacent_circles(false, 1.5, frame);
+      Circles_B = next.report_adjacent_circles(true, 1.5, frame);
+
+      // nice trick to fix things if connections are not the same for both
+      Circles_A.emplace_back(project_circle(next_ball, camera.camera_A));
+      Circles_B.emplace_back(project_circle(next_ball, camera.camera_B));
+
+      Circle next_circle_A = find_furthest_circle(Circles_A, last_circle_A);
+      Circle next_circle_B = find_furthest_circle(Circles_B, last_circle_B);
+
+      pre_ball = next_ball;
+      next_ball = triangulate_ball(next_circle_A, next_circle_B, camera);
+    }
+
+    // if at least one of the circles is 3 - connected, we have probably found a
+    // junction so lets optimize a junction and then add this junction as a
+    // special node
+    if (connections == 3) {
+      assert(false);
+    }
   }
-
 
   camera.image_data_A.drawGraph(root, frame);
   camera.image_data_B.drawGraph(root, frame);
+  displayVisual();
 
   std::ofstream file;
   file.open("../data/out/graph.txt");

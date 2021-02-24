@@ -1,4 +1,5 @@
 #include "arteryNet2.h"
+#include "imageData2.h"
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
 #include "opencv2/core/types.hpp"
@@ -7,12 +8,8 @@
 #include "stereo_camera.h"
 
 #include <ball_optimizer.h>
-
-BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera,
-                             const Circle &circle_A, const Circle &circle_B)
-    : ball(ball), stereo_camera(stereo_camera) {
-  ball = triangulate_ball(circle_A, circle_B, stereo_camera);
-};
+#include <cstddef>
+#include <limits>
 
 BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera)
     : ball(ball), stereo_camera(stereo_camera){};
@@ -27,10 +24,10 @@ void BallOptimizer::optimize_constrained(const uint16_t steps,
                                          const uint8_t frame_index,
                                          const Ball &constrain,
                                          double radius_factor) {
-                                           for (int i = 0; i < steps; i++) {
+  for (int i = 0; i < steps; i++) {
     step_constrained(1.0, frame_index, constrain, radius_factor);
   }
-                                         }
+}
 
 void BallOptimizer::step(const double dx, const uint8_t frame_index) {
   // calculate CircleGradients for both cameras
@@ -57,8 +54,6 @@ void BallOptimizer::step_constrained(const double dx, const uint8_t frame_index,
   step(dx, frame_index);
   ball.project_to_surface(constrain, radius_factor);
 }
-
-
 
 CircleGradient BallOptimizer::get_gradient(const Circle &circle,
                                            uint8_t camera_index,
@@ -211,6 +206,17 @@ cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source) {
   return ret;
 }
 
+std::vector<Circle> BallOptimizer::report_adjacent_circles(
+    bool check_cam_B, const double radius_factor, const size_t frame_index) const {
+  const imageData &data =
+      check_cam_B ? stereo_camera.image_data_B : stereo_camera.image_data_A;
+
+  Circle circle = project_circle(ball, data.cam);
+  return find_adjacent_circles(circle, radius_factor,
+                               data.distance[frame_index],
+                               data.threshold[frame_index]);
+}
+
 Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
                       const StereoCamera &stereo_camera) {
   const Camera &cam_A = stereo_camera.camera_A;
@@ -231,7 +237,8 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
   assert(abs(radius_A / radius_B - 1) < 0.3);
 
   double radius = (radius_A + radius_B) * 0.5;
-
+  //double radius = std::max(radius_A, radius_B);
+  //assert(radius > 0.001);
   // better direction:
   // Construct Plane for each Camera through origin, ball center and direction
   // px
@@ -258,4 +265,21 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
   ball.connections_B = circle_B.connections;
 
   return ball;
+}
+
+Circle find_furthest_circle(const std::vector<Circle>& circles, const Circle& query_circle) {
+  assert(circles.size() >0);
+
+  double max_distance = 0;
+  size_t max_index;
+
+  for (int i = 0; i < circles.size(); i++) {
+    double distance =(circles[i].location_px - query_circle.location_px).norm();
+    if (distance > max_distance) {
+      max_index = i;
+      max_distance = distance;
+      }
+
+  }
+  return circles[max_index];
 }
