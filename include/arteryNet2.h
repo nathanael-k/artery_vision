@@ -62,6 +62,6 @@ public:
 };
 
  // write everything connected to that node to a file for further processing
-  void write_to_file(arteryNode &node, std::ofstream &handle);
+  void write_to_file(const arteryNode &node, std::ofstream &handle);
 
 #endif //ARTERYNET_ARTERY_NET_H

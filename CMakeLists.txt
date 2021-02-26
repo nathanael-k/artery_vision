@@ -20,6 +20,7 @@ add_library(imageData2 STATIC src/imageData2/imageData2.cpp include/imageData2.h
 add_library(ball STATIC src/ball/ball.cpp include/ball.h)
 add_library(stereo_camera STATIC src/stereo_camera/stereo_camera.cpp include/stereo_camera.h)
 add_library(ball_optimizer STATIC src/ball_optimizer/ball_optimizer.cpp include/ball_optimizer.h)
+add_library(artery_replicator STATIC src/artery_replicator/artery_replicator.cpp include/artery_replicator.h)
 
 
 
@@ -41,5 +42,10 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} imageData camera arteryNet 
 target_link_libraries(test_camera ${OpenCV_LIBS} camera Eigen3::Eigen)
 target_link_libraries(test_net arteryNet Eigen3::Eigen)
 target_link_libraries(imageData ${OpenCV_LIBS} Eigen3::Eigen)
+
+target_link_libraries(imageData2 ${OpenCV_LIBS} Eigen3::Eigen)
 target_link_libraries(2camtime ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
-target_link_libraries(ball_optimization ${OpenCV_LIBS} imageData2 camera arteryNet2 Eigen3::Eigen ball stereo_camera ball_optimizer)
+target_link_libraries(stereo_camera camera)
+target_link_libraries(ball_optimizer ${OpenCV_LIBS} ball imageData2)
+target_link_libraries(artery_replicator ${OpenCV_LIBS} arteryNet2 stereo_camera ball_optimizer)
+target_link_libraries(ball_optimization ${OpenCV_LIBS} arteryNet2 artery_replicator)

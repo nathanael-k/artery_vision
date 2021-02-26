@@ -123,7 +123,7 @@ void arteryGraph::contractPath(arteryNode* start, int direction) {
         junctions.push_back(current);
 }
 
-void write_to_file(arteryNode &node, std::ofstream &handle) {
+void write_to_file(const arteryNode &node, std::ofstream &handle) {
     handle << node.ball.center_m.x() << " " << node.ball.center_m.y() << " "
            << node.ball.center_m.z() << " " << node.ball.radius_m << '\n';
     int i = 1;
@@ -131,6 +131,6 @@ void write_to_file(arteryNode &node, std::ofstream &handle) {
       i = 0;
 
     for (; i < node.degree; i++) {
-      write_to_file(*node.paths[i], handle);
+      write_to_file(*(node.paths[i]), handle);
     }
   }
