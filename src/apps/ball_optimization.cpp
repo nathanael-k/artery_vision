@@ -1,3 +1,4 @@
+#include "ball.h"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <arteryNet2.h>
@@ -112,7 +113,7 @@ int main(int argc, char **argv) {
   cv::createTrackbar("Vis. Src:", "", &what, 6, changeVisual);
   cv::createTrackbar("Kernel Size", "", &kernel_radius, 21, nullptr);
 
-  int frame = 4;
+  int frame = 5;
 
   // auto init circles:
   std::vector<Circle> init_Circles_A =
@@ -131,25 +132,30 @@ int main(int argc, char **argv) {
 
   std::cout << distances << std::endl;
 
-  // based on cross correlation, build balls
-  auto balls = init_balls(init_Circles_A, init_Circles_B, camera);
+  // based on cross correlation, build balls (this list owns the Balls)
+  std::list<Ball> balls = init_balls(init_Circles_A, init_Circles_B, camera);
 
-  std::vector<Ball> end_balls, middle_balls, junction_balls;
+  std::list<Ball*> end_balls, middle_balls, junction_balls;
+  std::list<Ball*> hot_endings;
   // sort balls into bins
-  for (const auto &ball : balls) {
+  for (auto &ball : balls) {
     if (ball.connections_A == 0 || ball.connections_B == 0) {
       // skip
     } else if (ball.connections_A == 1 && ball.connections_B == 1) {
-      end_balls.emplace_back(ball);
+      end_balls.emplace_back(&ball);
     } else if (ball.connections_A >= 3 || ball.connections_B >= 3) {
-      junction_balls.emplace_back(ball);
+      junction_balls.emplace_back(&ball);
     } else if (ball.connections_A == 2 || ball.connections_B == 2) {
-      middle_balls.emplace_back(ball);
+      middle_balls.emplace_back(&ball);
     }
   }
 
+  assert(end_balls.size() > 0);
+
   // pick the first ball and start to build line from there
-  Ball pre_ball = end_balls[0];
+  Ball& pre_ball = *end_balls.front();
+  end_balls.pop_front();
+
 
   // optimize first ball (with connections 1)
   BallOptimizer optimizer(pre_ball, camera);
@@ -158,6 +164,7 @@ int main(int argc, char **argv) {
   arteryGraph graph(pre_ball);
 
   arteryNode *curr_node = graph.root;
+  hot_endings.emplace_back(&(curr_node->ball));
   Circle last_circle_A = project_circle(curr_node->ball, camera.camera_A);
   Circle last_circle_B = project_circle(curr_node->ball, camera.camera_B);
 
@@ -178,6 +185,8 @@ int main(int argc, char **argv) {
     auto Circles_A = next.report_adjacent_circles(false, 2, frame);
     auto Circles_B = next.report_adjacent_circles(true, 2, frame);
     size_t connections = std::max(Circles_A.size(), Circles_B.size());
+    next_ball.connections_A = Circles_A.size();
+    next_ball.connections_B = Circles_B.size();
 
     if (connections == 0) {
       // that is indeed strange and should not really happen, probably the graph
@@ -188,11 +197,22 @@ int main(int argc, char **argv) {
     // if we have one connection on both, it seems to be a dead end
     // we should check if we already found that, and then end this path
     if (connections == 1) {
+      auto it = find_ball_at(end_balls, next_ball.center_m);
+      if (it != end_balls.end()) {
+        next_ball = **it;
+        end_balls.erase(it);
+        next.optimize(10, frame);
+
+        std::cout << "Ending line at pre registered ending ..." << std::endl;
+      }
+      else {
       next.optimize_constrained(10, frame, pre_ball, 1.5);
-      std::cout << "Continuing line ..." << std::endl;
+
+        std::cout << "Ending line at new found ending ..." << std::endl;
+      }
       next_node = curr_node->addNode(next_ball);
-      curr_node = next_node;
-      
+      hot_endings.emplace_back(&(next_node->ball));
+      curr_node = next_node;      
       break;
     }
 
@@ -225,7 +245,25 @@ int main(int argc, char **argv) {
     // junction so lets optimize a junction and then add this junction as a
     // special node
     if (connections == 3) {
-      assert(false);
+      if (!junction_balls.empty()) {
+      auto it = find_ball_at(junction_balls, next_ball.center_m);
+      if (it != end_balls.end()) {
+        next_ball = **it;
+        junction_balls.erase(it);
+
+        std::cout << "Ending line at pre registered junction ..." << std::endl;
+      }
+      else {
+
+        std::cout << "Ending line at new found junction ..." << std::endl;
+      }}
+      else {
+      std::cout << "Ending line at new found junction ..." << std::endl;
+      }
+      next.optimize_junction(10, frame);
+      next_node = curr_node->addNode(next_ball);
+      curr_node = next_node;      
+      break;
     }
   }
 

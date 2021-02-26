@@ -2,6 +2,7 @@
 
 #include <camera.h>
 #include <imageData2.h>
+#include <list>
 
 class StereoCamera {
 public:
@@ -38,7 +39,7 @@ Eigen::MatrixXd cross_correlate_circles(const std::vector<Circle> &circles_A,
                                         const std::vector<Circle> &circles_B,
                                         const StereoCamera &camera);
 
-std::vector<Ball> init_balls(const std::vector<Circle> &circles_A,
+std::list<Ball> init_balls(const std::vector<Circle> &circles_A,
                                         const std::vector<Circle> &circles_B,
                                         const StereoCamera &camera);
 

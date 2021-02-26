@@ -2,8 +2,10 @@
 
 #include <Eigen/Core>
 #include <bits/stdint-intn.h>
+#include <cstddef>
 #include <sys/types.h>
 #include <vector>
+#include <list>
 
 struct Ball {
   Eigen::Vector3d direction;
@@ -19,8 +21,8 @@ struct Ball {
   void project_to_surface(const Ball &other, double radius_factor);
 };
 
-const Ball &find_ball_at(const std::vector<Ball> &balls,
-                         const Ball &query_ball);
+std::list<Ball*>::iterator find_ball_at(std::list<Ball*> &balls,
+                         const Eigen::Vector3d location_m);
 
 struct CircleGradient {
   double quality;
@@ -57,3 +59,9 @@ public:
 
   void apply_gradient(const CircleGradient &gradient, double dx);
 };
+
+Circle mid_circle (const std::vector<Circle>& circles);
+
+std::vector<double> relative_angles(const std::vector<Circle>& circles, const Circle& query);
+
+size_t max_angle_difference(const std::vector<double>& less, const std::vector<double>& more);

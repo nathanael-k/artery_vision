@@ -28,10 +28,17 @@ public:
   void optimize_constrained(const uint16_t steps, const uint8_t frame_index,
                             const Ball &constrain, double radius_factor);
 
+  void optimize_junction(const uint16_t steps, const uint8_t frame_index);
+
 std::vector<Circle> report_adjacent_circles(
     bool check_cam_B, const double radius_factor, const size_t frame_index) const;
 
+Eigen::Vector2d report_smallest_gap_direction(bool check_cam_B, const Circle& circle,
+                                       const double radius_factor,
+                                       const size_t frame_index) const;
+
 private:
+// ball is not owned by the optimizer
   Ball &ball;
   const StereoCamera &stereo_camera;
 
@@ -41,6 +48,8 @@ private:
   // the actual optimization step
   void step_constrained(const double dx, const uint8_t frame_index,
                         const Ball &constrain, double radius_factor);
+
+  void step_junction(const double dx, const uint8_t frame_index);
 
  
   // project the ball to the two circles
@@ -62,3 +71,4 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
                       const StereoCamera &stereo_camera);
 
 Circle find_furthest_circle(const std::vector<Circle>& circles, const Circle& query_circle);
+

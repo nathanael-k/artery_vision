@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <stereo_camera.h>
 #include <ball_optimizer.h>
+#include <list>
 
 StereoCamera::StereoCamera(std::string meta_folder)
     : camera_A(meta_folder + "meta", 0), camera_B(meta_folder + "meta", 1),
@@ -76,20 +77,23 @@ Eigen::MatrixXd cross_correlate_circles(const std::vector<Circle> &circles_A,
   return camera.cross_correlate_pixels(pixel_A, pixel_B);
 }
 
-std::vector<Ball> init_balls(const std::vector<Circle> &circles_A,
+std::list<Ball> init_balls(const std::vector<Circle> &circles_A,
                              const std::vector<Circle> &circles_B,
                              const StereoCamera &camera) {
   // cross correlate to find distances
   auto distances = cross_correlate_circles(circles_A, circles_B, camera);
 
-  std::vector<Ball> ret;
+  std::list<Ball> ret;
   size_t count = std::min(circles_A.size(), circles_B.size());
   double max = distances.maxCoeff();
+  double cutoff = 0.1;
 
-  // TODO: implement some max distance heuristic (eg: if the next best distance is more than 2x as bad, abort)
-  for (int i = 0; i < count; i++) {
+ for (int i = 0; i < count; i++) {
       Eigen::MatrixXd::Index minRow, minCol;
-      distances.minCoeff(&minRow, &minCol);
+      double distance = distances.minCoeff(&minRow, &minCol);
+      if (distance > 0.1 && distance > cutoff) // if we get one too bad we abort
+        return ret;
+      cutoff =  distance * 2; 
       ret.emplace_back(triangulate_ball(circles_A[minRow], circles_B[minCol], camera));
       distances.row(minRow).setConstant(max);
       distances.col(minCol).setConstant(max);
