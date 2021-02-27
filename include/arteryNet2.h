@@ -16,14 +16,14 @@ public:
     int degree = 0;
     bool optimized = false;
     bool enddraw = true;
-    const int index;
+    const size_t index;
 
     Ball ball;
 
     // pointer to skip nodes: goes along the same path, but directly to the next special node
-    arteryNode* junctions[MAX_DEGREE] = {nullptr};
+    size_t junctions[MAX_DEGREE];
     // the paths going from this node
-    arteryNode* paths[MAX_DEGREE] = {nullptr};
+    size_t paths[MAX_DEGREE];
 
 
     double radii[MAX_DEGREE];
@@ -32,36 +32,39 @@ public:
     arteryNode(arteryGraph& _graph, const Ball& ball);
 
     // adds a node to the graph, connected to this node
-    arteryNode* addNode(const Ball& ball);
+    arteryNode& addNode(const Ball& ball);
 };
 
 class arteryGraph{
 public:
-    arteryNode* root = {nullptr};
-    arteryNode* catheter_location = {nullptr};
-    std::vector<arteryNode*> junctions;
+    std::vector<arteryNode> all_nodes;
+
+    arteryNode& root = all_nodes[0];
+    // arteryNode* catheter_location = {nullptr};
+    std::vector<size_t> junctions;
 
     // start a new net with some position as first node
 
     arteryGraph(const Ball& ball);
-    arteryGraph() {};
+    // arteryGraph() {};
 
     // establish direct link between junctions for faster processing
-    void contractPath(arteryNode* start, int direction);
+    // void contractPath(arteryNode* start, int direction);
 
     // two nodes that should get connected in the graph
-    void connectNodes(arteryNode* node_a, arteryNode* node_b);
+    void connectNodes(size_t index_1, size_t index_2);
 
     // enable direct links between nodes with degree != 2
     // establish root node with degree >2
-    void optimize();
+    //void optimize();
     int size = 0;
     int nEnd = 0;
     int nJunction = 0;
     bool optimized = false;
 };
 
- // write everything connected to that node to a file for further processing
-  void write_to_file(const arteryNode &node, std::ofstream &handle);
+
+  // write graph to file
+  void write_to_file(const arteryGraph &graph, std::ofstream&handle);
 
 #endif //ARTERYNET_ARTERY_NET_H

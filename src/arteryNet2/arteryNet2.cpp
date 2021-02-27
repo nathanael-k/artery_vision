@@ -9,17 +9,19 @@ arteryNode::arteryNode(arteryGraph& _graph, const Ball& ball)
     graph.size++;
 }
 
-arteryNode* arteryNode::addNode(const Ball& ball) {
+arteryNode& arteryNode::addNode(const Ball& ball) {
 
     assert(degree < MAX_DEGREE);
 
-    arteryNode* node = new arteryNode(graph, ball);
+    size_t index = graph.all_nodes.size();
+    graph.all_nodes.emplace_back(graph, ball);
+    arteryNode& node = *graph.all_nodes.end();
 
     // connections
-    paths[degree] = node;
+    paths[degree] = index;
     degree++;
-    node->paths[node->degree] = this;
-    node->degree++;
+    node.paths[node.degree] = index;
+    node.degree++;
 
     // can only happen once
     if (degree == 3) graph.nJunction++;
@@ -28,36 +30,37 @@ arteryNode* arteryNode::addNode(const Ball& ball) {
     return node;
 }
 
-
 arteryGraph::arteryGraph(const Ball& ball) {
-    root = new arteryNode(*this, ball);
+    all_nodes.emplace_back(*this, ball);
 }
 
-void arteryGraph::connectNodes(arteryNode *node_a, arteryNode *node_b) {
+void arteryGraph::connectNodes(size_t index_1, size_t index_2) {
+    arteryNode& node_1 = all_nodes[index_1];
+    arteryNode& node_2 = all_nodes[index_2];
+    
 
-    assert( node_a->degree < MAX_DEGREE &&
-            node_b->degree < MAX_DEGREE);
-
-
+    assert( node_1.degree < MAX_DEGREE &&
+            node_2.degree < MAX_DEGREE);
 
     // update the old node
-    node_a->paths[node_a->degree] = node_b;
-    node_a->degree++;
+    node_1.paths[node_1.degree] = index_2;
+    node_1.degree++;
 
     // update the new node
-    node_b->paths[node_b->degree] = node_a;
-    node_b->degree++;
+    node_2.paths[node_2.degree] = index_1;
+    node_2.degree++;
 
-    if (node_a->degree == 2)
+    if (node_1.degree == 2)
         nEnd--;
-    if (node_b->degree == 2)
+    if (node_2.degree == 2)
         nEnd--;
-    if (node_a->degree == 3)
+    if (node_1.degree == 3)
         nJunction++;
-    if (node_b->degree == 3)
+    if (node_2.degree == 3)
         nJunction++;
 }
 
+/*
 void arteryGraph::optimize() {
     assert(optimized == false);
     optimized = true;
@@ -78,7 +81,8 @@ void arteryGraph::optimize() {
         }
     }
 }
-
+*/
+/*
 void arteryGraph::contractPath(arteryNode* start, int direction) {
     // make sure we are save
     assert(start->degree > direction);
@@ -122,15 +126,12 @@ void arteryGraph::contractPath(arteryNode* start, int direction) {
     if (current->optimized == false)
         junctions.push_back(current);
 }
-
-void write_to_file(const arteryNode &node, std::ofstream &handle) {
-    handle << node.ball.center_m.x() << " " << node.ball.center_m.y() << " "
+*/
+  // write graph to file
+  void write_to_file(const arteryGraph &graph, std::ofstream&handle) {
+      for (const auto& node : graph.all_nodes)
+      {
+          handle << node.ball.center_m.x() << " " << node.ball.center_m.y() << " "
            << node.ball.center_m.z() << " " << node.ball.radius_m << '\n';
-    int i = 1;
-    if (node.index == 0)
-      i = 0;
-
-    for (; i < node.degree; i++) {
-      write_to_file(*(node.paths[i]), handle);
-    }
+      }
   }
