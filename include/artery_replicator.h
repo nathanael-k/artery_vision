@@ -35,8 +35,7 @@ private:
   // hot junction list
 
   // hot ends: ends that were added in this frame, we will need to check them in the next frame
-  void explore_node(arteryNode &node, const arteryNode &old_node,
-                    std::list<arteryNode *> hot_ends, 
-                    std::list<arteryNode *> new_ends,
-                    std::list<arteryNode *> hot_junctions, const size_t frame);
+  void explore_node(arteryNode &node, const arteryNode &old_node, const size_t frame);
+
+  void start_at_end_ball(Ball& ball, const size_t frame_index);
 };

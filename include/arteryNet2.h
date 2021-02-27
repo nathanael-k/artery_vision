@@ -1,6 +1,7 @@
 #ifndef ARTERYNET_ARTERY_NET_H
 #define ARTERYNET_ARTERY_NET_H
 
+#include <cstddef>
 #define MAX_DEGREE 10
 #define DEFAULT_RADIUS 0.25
 #include <vector>
@@ -14,7 +15,8 @@ class arteryNode{
 public:
     arteryGraph& graph;
     int degree = 0;
-    bool optimized = false;
+    // have we fully explored / explained this node
+    int explored_index = -1;
     bool enddraw = true;
     const size_t index;
 
@@ -39,14 +41,12 @@ class arteryGraph{
 public:
     std::vector<arteryNode> all_nodes;
 
-    arteryNode& root = all_nodes[0];
     // arteryNode* catheter_location = {nullptr};
     std::vector<size_t> junctions;
 
     // start a new net with some position as first node
-
     arteryGraph(const Ball& ball);
-    // arteryGraph() {};
+    arteryGraph() {};
 
     // establish direct link between junctions for faster processing
     // void contractPath(arteryNode* start, int direction);
@@ -61,6 +61,14 @@ public:
     int nEnd = 0;
     int nJunction = 0;
     bool optimized = false;
+
+    // distance and index of the closest ball
+    // distance is calculated relative to the radius of that ball,
+    // 1.0 is exactly on the surface of the ball
+    double find_closest_ball(const Eigen::Vector3d position_m, size_t& index) const;
+    
+    // adds a new, unconnected ball to the graph (typically a not yet connected end ball)
+    arteryNode& add_ball(const Ball& ball);
 };
 
 

@@ -1,12 +1,19 @@
 #include <arteryNet2.h>
 
 #include <assert.h>
+#include <cstddef>
 #include <fstream>
+#include <limits>
 
 arteryNode::arteryNode(arteryGraph& _graph, const Ball& ball)
                     : graph(_graph), ball(ball), index(graph.size) {
     graph.nEnd++;
     graph.size++;
+}
+
+arteryNode& arteryGraph::add_ball( const Ball& ball) {
+    all_nodes.emplace_back(this, ball);
+    return *all_nodes.end();
 }
 
 arteryNode& arteryNode::addNode(const Ball& ball) {
@@ -134,4 +141,17 @@ void arteryGraph::contractPath(arteryNode* start, int direction) {
           handle << node.ball.center_m.x() << " " << node.ball.center_m.y() << " "
            << node.ball.center_m.z() << " " << node.ball.radius_m << '\n';
       }
+  }
+
+  double arteryGraph::find_closest_ball(const Eigen::Vector3d position_m, size_t& index) const {
+      double min_distance = std::numeric_limits<double>::max();
+      assert(!all_nodes.empty());
+      for (const arteryNode& node : all_nodes) {
+          double rel_distance = (position_m - node.ball.center_m).norm() / node.ball.radius_m;
+          if (rel_distance < min_distance) {
+              min_distance = rel_distance;
+              index = node.index;
+          }
+      }
+      return min_distance;
   }
