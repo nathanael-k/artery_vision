@@ -11,30 +11,32 @@ arteryNode::arteryNode(arteryGraph& _graph, const Ball& ball)
     graph.size++;
 }
 
-arteryNode& arteryGraph::add_ball( const Ball& ball) {
-    all_nodes.emplace_back(this, ball);
-    return *all_nodes.end();
+size_t arteryGraph::add_ball( const Ball& ball) {
+    size_t index = all_nodes.size();
+    all_nodes.emplace_back(*this, ball);
+    return index;
 }
 
-arteryNode& arteryNode::addNode(const Ball& ball) {
+size_t arteryGraph::add_ball_at(const Ball& ball, const size_t index) {
 
-    assert(degree < MAX_DEGREE);
+    assert(all_nodes[index].degree < MAX_DEGREE);
 
-    size_t index = graph.all_nodes.size();
-    graph.all_nodes.emplace_back(graph, ball);
-    arteryNode& node = *graph.all_nodes.end();
+    size_t new_index = all_nodes.size();
+    all_nodes.emplace_back(*this, ball);
+    arteryNode& new_node = all_nodes.back();
+    arteryNode& old_node = all_nodes[index];
 
     // connections
-    paths[degree] = index;
-    degree++;
-    node.paths[node.degree] = index;
-    node.degree++;
+    old_node.paths[old_node.degree] = new_index;
+    old_node.degree++;
+    new_node.paths[new_node.degree] = index;
+    new_node.degree++;
 
     // can only happen once
-    if (degree == 3) graph.nJunction++;
-    if (degree == 2) graph.nEnd--;
+    if (old_node.degree == 3) nJunction++;
+    if (old_node.degree == 2) nEnd--;
 
-    return node;
+    return new_index;
 }
 
 arteryGraph::arteryGraph(const Ball& ball) {

@@ -31,11 +31,8 @@ private:
 
   // takes a node, recursively explores what is around it and not yet registered
   // ends when having more than 2 connections in at least one camera, with a
-  // discrepancy (A != B) in that case, still create the node, but add it to a
-  // hot junction list
-
-  // hot ends: ends that were added in this frame, we will need to check them in the next frame
-  void explore_node(arteryNode &node, const arteryNode &old_node, const size_t frame);
+  // discrepancy (A != B) in that
+  void explore_node(size_t node, size_t old_node, const size_t frame);
 
   void start_at_end_ball(Ball& ball, const size_t frame_index);
 };

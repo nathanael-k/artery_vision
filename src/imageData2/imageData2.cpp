@@ -381,18 +381,17 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
     if (circle_values[index] == 0) {
       if (in_connection) {
         // close connection and generate circle
-        
-
-
         // center of the circle is the maximum value of distances
 
         Eigen::Vector2d position_px(coordinates[max_index].x,
                                     coordinates[max_index].y);
         float radius_px = max_distance;
-        assert (radius_px > 0);
+
+// only add if we actually have some radius
+        if (radius_px > 0.2 * radius) {
         ret.emplace_back(position_px, radius_px,
                          Eigen::Vector2d(coord.x, coord.y));
-
+        }
         in_connection = false;
         max_distance = 0;
       }

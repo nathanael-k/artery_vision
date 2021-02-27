@@ -1,5 +1,6 @@
 
 
+#include "imageData2.h"
 #include <artery_replicator.h>
 
 #include <arteryNet2.h>
@@ -26,7 +27,7 @@ ArteryReplicator::ArteryReplicator(const std::string &data_path,
 
 arteryGraph &ArteryReplicator::build_graph() {
 
-  size_t frame = 5;
+  size_t frame = 8;
 
   std::list<Ball> init_balls = generate_init_balls(frame, 5);
 
@@ -46,20 +47,16 @@ arteryGraph &ArteryReplicator::build_graph() {
     }
   }
 
-
   // we need at least one end ball to start the build
   assert(end_balls.size() > 0);
 
-  for (Ball* ball: end_balls) {
+  for (Ball *ball : end_balls) {
     start_at_end_ball(*ball, frame);
-    camera.image_data_A.drawGraph(root, frame);
-    camera.image_data_B.drawGraph(root, frame);
+    camera.image_data_A.drawGraph(graph, frame);
+    camera.image_data_B.drawGraph(graph, frame);
     update_display(0, this);
     cv::waitKey();
   }
-
-    
-    
 
   return graph;
 }
@@ -134,117 +131,147 @@ std::list<Ball> ArteryReplicator::generate_init_balls(size_t frame,
 }
 
 // tail recursive!
-void ArteryReplicator::explore_node(arteryNode &node,
-                                    const arteryNode &old_node,
+void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
                                     const size_t frame) {
   // 0) the old_node is already optimized, the node not yet
   // we know that there is no node yet at the center of the new node!
 
-  Ball &ball = node.ball;
-  BallOptimizer optimizer(ball, camera);
+  while (true) {
+    arteryNode &node = graph.all_nodes[node_idx];
+    const arteryNode &old_node = graph.all_nodes[old_node_idx];
+    ;
 
-  // 1) find all neighbours we have
+    Ball &ball = node.ball;
+    BallOptimizer optimizer(ball, camera);
 
-  // far circles help us understand what the situation is a bit further out.
-  // it improves probability that we have the same number of connections on
-  // both cameras
-  auto far_circles_A = optimizer.report_adjacent_circles(false, 2, frame);
-  auto far_circles_B = optimizer.report_adjacent_circles(true, 2, frame);
-  ball.connections_A = far_circles_A.size();
-  ball.connections_B = far_circles_B.size();
-  // TODO: expand to what we might do if we dont agree
-  assert(ball.connections_A == ball.connections_B);
-  size_t max_connections = std::max(ball.connections_A, ball.connections_B);
+    // 1) find all neighbours we have
 
-  if (max_connections == 0) {
-    // that is indeed strange and should not really happen, probably the graph
-    // is not connected or maybe the thresholding is too aggressive
-    assert(false);
-  }
+    // far circles help us understand what the situation is a bit further out.
+    // it improves probability that we have the same number of connections on
+    // both cameras
+    auto far_circles_A = optimizer.report_adjacent_circles(false, 2, frame);
+    auto far_circles_B = optimizer.report_adjacent_circles(true, 2, frame);
+    ball.connections_A = far_circles_A.size();
+    ball.connections_B = far_circles_B.size();
+    // TODO: expand to what we might do if we dont agree
+    // assert(ball.connections_A == ball.connections_B);
+    size_t max_connections = std::max(ball.connections_A, ball.connections_B);
+    size_t min_connections = std::min(ball.connections_A, ball.connections_B);
 
-  // if we have one connection on both, it seems to be a dead end
-  if (max_connections == 1) {
+    if (max_connections == 0) {
+      // that is indeed strange and should not really happen, probably the graph
+      // is not connected or maybe the thresholding is too aggressive
+      assert(false);
+    }
+
+    // if we have one connection on both, it seems to be a dead end
+    if (max_connections == 1) {
+      optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
+      std::cout << "Ending line at new found ending ..." << std::endl;
+      return;
+    }
+
+    // if at least one of the circles is 3 - connected, we have probably found a
+    // junction so lets optimize a junction and then add this junction as a
+    // special node
+    if (min_connections >= 3) {
+
+      // just optimize this one, then leave
+      std::cout << "Ending line at new found junction ..." << std::endl;
+
+      optimizer.optimize_junction(10, frame);
+      return;
+    }
+
+    assert(ball.connections_A == 2 || ball.connections_B == 2);
+    // the normal path case, figure out which of the circles is not the last
+    // ball then we can create a new ball just there
+
+    // add that easy line ball:
+
     optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
-    std::cout << "Ending line at new found ending ..." << std::endl;
-    return;
-  }
+    std::cout << "Continuing line ..." << std::endl;
 
-  // if at least one of the circles is 3 - connected, we have probably found a
-  // junction so lets optimize a junction and then add this junction as a
-  // special node
-  if (max_connections >= 3) {
+    // go for the next ball
+    auto circles_A = optimizer.report_adjacent_circles(false, 1.5, frame);
+    auto circles_B = optimizer.report_adjacent_circles(true, 1.5, frame);
+    bool is_prob_junction =(circles_A.size() > 2 || circles_B.size() > 2);
 
-    // just optimize this one, then leave
-    std::cout << "Ending line at new found junction ..." << std::endl;
+    Circle last_circle_A = project_circle(old_node.ball, camera.camera_A);
+    Circle last_circle_B = project_circle(old_node.ball, camera.camera_B);
 
-    optimizer.optimize_junction(10, frame);
-    return;
-  }
+    // nice trick to fix things if connections are not the same for both
+    circles_A.emplace_back(project_circle(ball, camera.camera_A));
+    circles_B.emplace_back(project_circle(ball, camera.camera_B));
 
-  assert(max_connections == 2);
-  // the normal path case, figure out which of the circles is not the last
-  // ball then we can create a new ball just there
+    Circle next_circle_A = find_furthest_circle(circles_A, last_circle_A);
+    Circle next_circle_B = find_furthest_circle(circles_B, last_circle_B);
 
-  // add that easy line ball:
+    Ball next_ball = triangulate_ball(next_circle_A, next_circle_B, camera);
+    size_t next_index;
 
-  optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
-  std::cout << "Continuing line ..." << std::endl;
+    // if we already have a ball in the graph at the same place, connect them
+    double connect_radius = is_prob_junction ? 1.6 : 0.9;
+    if (graph.find_closest_ball(next_ball.center_m, next_index) < connect_radius) {
+      // connect them, move on
+      graph.connectNodes(node.index, next_index);
+      node.explored_index = frame;
+      graph.all_nodes[next_index].explored_index = frame;
 
-  // go for the next ball
-  auto circles_A = optimizer.report_adjacent_circles(false, 1.5, frame);
-  auto circles_B = optimizer.report_adjacent_circles(true, 1.5, frame);
+      std::cout << "Connecting already found nodes " << node.index << " and "
+                << next_index << '\n';
+      return;
+    }
 
-  Circle last_circle_A = project_circle(old_node.ball, camera.camera_A);
-  Circle last_circle_B = project_circle(old_node.ball, camera.camera_B);
-
-  // nice trick to fix things if connections are not the same for both
-  circles_A.emplace_back(project_circle(ball, camera.camera_A));
-  circles_B.emplace_back(project_circle(ball, camera.camera_B));
-
-  Circle next_circle_A = find_furthest_circle(circles_A, last_circle_A);
-  Circle next_circle_B = find_furthest_circle(circles_B, last_circle_B);
-
-  Ball next_ball = triangulate_ball(next_circle_A, next_circle_B, camera);
-  size_t next_index; 
-
-  // if we already have a ball in the graph at the same place, connect them
-  if (graph.find_closest_ball(next_ball.center_m, next_index) < 1.5) {
-    // connect them, move on
-    graph.connectNodes(node.index, next_index);
     node.explored_index = frame;
-    graph.all_nodes[next_index].explored_index = frame;
+    // references to nodes get invalidated here!
+    size_t next_node_idx = graph.add_ball_at(next_ball, node_idx);
 
-    std::cout << "Connecting already found nodes " << node.index << " and "
-              << next_index << '\n';
-    return;
+    // instead of recursion
+    old_node_idx = node_idx;
+    node_idx = next_node_idx;
   }
-
-  node.explored_index = frame;
-  arteryNode &next_node = node.addNode(next_ball);
-
-  // tail recursion: the next ball can be added to the graph, and be explored
-  // next
-  explore_node(next_node, node, frame);
 }
 
-void ArteryReplicator::start_at_end_ball(Ball& ball, const size_t frame_index) {
+void ArteryReplicator::start_at_end_ball(Ball &ball, const size_t frame_index) {
 
   // first make sure there is no node yet in the graph at that position
   size_t index;
-  if (graph.find_closest_ball(ball.center_m, index) < 1)
-  { 
+  // short circuit trick to not consider empty graphs
+  if (!graph.all_nodes.empty() &&
+      graph.find_closest_ball(ball.center_m, index) < 1) {
     std::cout << "End Ball was already part of the graph.\n";
     return;
   }
 
+  // add this ball to the graph, the next ball should be an obvious one
+  size_t node_idx = graph.add_ball(ball);
+
   // optimize the ball
-  BallOptimizer optimizer(ball, camera);
+  BallOptimizer optimizer(graph.all_nodes[node_idx].ball, camera);
+
+  // do the whole triangulation business of the next ball
+  double radius_A = 1.5;
+  auto circles_A =
+      optimizer.report_adjacent_circles(false, radius_A, frame_index);
+  while (circles_A.size() > 1) {
+    radius_A += 0.1;
+    circles_A = optimizer.report_adjacent_circles(false, radius_A, frame_index);
+  }
+
+  double radius_B = 1.5;
+  auto circles_B =
+      optimizer.report_adjacent_circles(true, radius_B, frame_index);
+  while (circles_B.size() > 1) {
+    radius_B += 0.1;
+    circles_B = optimizer.report_adjacent_circles(true, radius_B, frame_index);
+  }
+
+  assert(circles_A.size() == 1 && circles_B.size() == 1);
+
   optimizer.optimize(10, frame_index);
 
-  // add this ball to the graph, the next ball should be an obvious one
-  arteryNode node = graph.add_ball(ball);
-  arteryNode next_node = node.addNode(ball.next_ball());
+  size_t next_node_idx = graph.add_ball_at(triangulate_ball(circles_A[0], circles_B[0], camera), node_idx);
 
-  explore_node(next_node, node, frame_index);
-
+  explore_node(next_node_idx, node_idx, frame_index);
 }

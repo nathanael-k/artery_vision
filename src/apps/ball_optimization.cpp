@@ -5,7 +5,12 @@
 
 #include <ostream>
 
+// debug nan
+#include <fenv.h>
+
 int main(int argc, char **argv) {
+
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
 
   std::string window_A = "Camera A";
   std::string window_B = "Camera B";
@@ -30,7 +35,7 @@ int main(int argc, char **argv) {
   std::ofstream file;
   file.open("../data/out/graph.txt");
 
-  write_to_file(*(graph.root), file);
+  write_to_file(graph, file);
   file.close();
 
   cv::waitKey(0);

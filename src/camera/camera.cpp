@@ -212,6 +212,7 @@ double Camera::intersect(const Vector3d &originA, const Vector3d &directionA,
     Vector3d pointB = lineB.intersectionPoint(planeA);
 
     point = (pointA + pointB) / 2;
+    assert(point.norm() < 100);
     return (pointA - pointB).norm();
 }
 

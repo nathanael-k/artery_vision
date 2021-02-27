@@ -60,15 +60,9 @@ public:
   // #### methods for visualisation
 
   // starting from node, draw everything connected to it on layer index
-  void drawGraph(arteryNode &node, int index = 0) {
-    renderBall(node.ball, index);
-    int i = 1;
-    if (node.index == 0)
-      i = 0;
-
-    for (; i < node.degree; i++) {
-      renderLine(node.ball.center_m, node.paths[i]->ball.center_m, index);
-      drawGraph(*node.paths[i], index);
+  void drawGraph(const arteryGraph& graph, int index = 0) {
+    for (const auto& node : graph.all_nodes){
+      renderBall(node.ball, index);
     }
   }
 

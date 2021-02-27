@@ -33,8 +33,6 @@ public:
     // construct a new arteryNode
     arteryNode(arteryGraph& _graph, const Ball& ball);
 
-    // adds a node to the graph, connected to this node
-    arteryNode& addNode(const Ball& ball);
 };
 
 class arteryGraph{
@@ -68,7 +66,10 @@ public:
     double find_closest_ball(const Eigen::Vector3d position_m, size_t& index) const;
     
     // adds a new, unconnected ball to the graph (typically a not yet connected end ball)
-    arteryNode& add_ball(const Ball& ball);
+    size_t add_ball(const Ball& ball);
+
+    // adds a node to the graph, connected to this node
+    size_t add_ball_at (const Ball& ball, const size_t index);
 };
 
 

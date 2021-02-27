@@ -35,8 +35,8 @@ void BallOptimizer::optimize_constrained(const uint16_t steps,
 void BallOptimizer::optimize_junction(const uint16_t steps,
                                       const uint8_t frame_index) {
   // right now we assume 3 junctions on both cameras
-  assert(ball.connections_A == 3);
-  assert(ball.connections_B == 3);
+  //assert(ball.connections_A == 3);
+  //assert(ball.connections_B == 3);
   for (int i = 0; i < steps; i++) {
     step_junction(1.0, frame_index);
   }
