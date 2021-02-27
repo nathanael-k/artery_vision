@@ -189,7 +189,7 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
 
     // add that easy line ball:
 
-    optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
+    optimizer.optimize_constrained(50, frame, old_node.ball, 1.5);
     std::cout << "Continuing line ..." << std::endl;
 
     // go for the next ball

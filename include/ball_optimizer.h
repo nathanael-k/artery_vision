@@ -30,6 +30,10 @@ public:
 
   void optimize_junction(const uint16_t steps, const uint8_t frame_index);
 
+  // use when one camera is a path, while the other is a junction or an end
+  // the probability is high that we have basically a 
+  //void optimize_constrained_dominant
+
 std::vector<Circle> report_adjacent_circles(
     bool check_cam_B, const double radius_factor, const size_t frame_index) const;
 

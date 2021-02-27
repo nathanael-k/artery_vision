@@ -341,12 +341,13 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
   double radius_A = cam_A.estimate_radius_world_m(center, circle_A.radius_px);
   double radius_B = cam_B.estimate_radius_world_m(center, circle_B.radius_px);
 
-  // assert the radii do not disagree too much
-  assert(abs(radius_A / radius_B - 1) < 0.3);
+  double radius = std::min(radius_A, radius_B);
 
-  double radius = (radius_A + radius_B) * 0.5;
-  // double radius = std::max(radius_A, radius_B);
-  // assert(radius > 0.001);
+  // assert the radii do not disagree too much
+  if( abs(radius_A / radius_B - 1) < 0.3) {
+    radius = (radius_A + radius_B) * 0.5;
+  }
+
   // better direction:
   // Construct Plane for each Camera through origin, ball center and direction
   // px
