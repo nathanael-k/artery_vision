@@ -497,15 +497,28 @@ void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
   // all coordinates collected
 }
 
+bool in_bounds(cv::Point point, const cv::Mat& mat) {
+  if (point.x < 0 || point.y < 0)
+    return false;
+  if (point.x >= mat.cols || point.y >= mat.rows)
+    return false;
+
+  return true;
+}
+
 void fill_array(std::vector<u_int8_t> &array,
                 const std::vector<cv::Point2i> &coordinates,
                 const cv::Mat &source) {
   array.clear();
   array.reserve(coordinates.size());
   for (const auto &coord : coordinates) {
-    array.emplace_back(source.at<uint8_t>(coord));
+    if (in_bounds(coord, source))
+      array.emplace_back(source.at<uint8_t>(coord));
+    else
+      array.emplace_back(0);
   }
 }
+
 
 std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
                                          const cv::Mat &threshold,

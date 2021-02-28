@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   cv::namedWindow(window_detail, cv::WINDOW_AUTOSIZE);
 
   
-  ArteryReplicator replicator("../data/renders/easy_flow_2/", window_A, window_B, window_detail);
+  ArteryReplicator replicator("../data/renders/aorta_to_brain/", window_A, window_B, window_detail);
 
   cv::createTrackbar("Frame:", "", &replicator.camera.current_displayed_frame,
                      replicator.camera.total_frames - 1, ArteryReplicator::update_display, &replicator);
