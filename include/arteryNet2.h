@@ -65,6 +65,8 @@ public:
     // 1.0 is exactly on the surface of the ball
     double find_closest_ball(const Eigen::Vector3d position_m, size_t& index) const;
     
+    double find_closest_ball(const Eigen::Vector3d position_m, const size_t& skip_index, size_t& index) const;
+    
     // adds a new, unconnected ball to the graph (typically a not yet connected end ball)
     size_t add_ball(const Ball& ball);
 

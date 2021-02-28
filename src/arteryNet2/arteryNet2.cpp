@@ -157,3 +157,18 @@ void arteryGraph::contractPath(arteryNode* start, int direction) {
       }
       return min_distance;
   }
+
+  double arteryGraph::find_closest_ball(const Eigen::Vector3d position_m, const size_t& skip_index, size_t& index) const {
+      double min_distance = std::numeric_limits<double>::max();
+      assert(!all_nodes.empty());
+      for (const arteryNode& node : all_nodes) {
+          if (node.index == skip_index)
+            continue;
+          double rel_distance = (position_m - node.ball.center_m).norm() / node.ball.radius_m;
+          if (rel_distance < min_distance) {
+              min_distance = rel_distance;
+              index = node.index;
+          }
+      }
+      return min_distance;
+  }

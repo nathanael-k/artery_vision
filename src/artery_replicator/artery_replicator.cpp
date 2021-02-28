@@ -31,7 +31,7 @@ arteryGraph &ArteryReplicator::build_graph() {
 
   for (size_t frame = 0; frame < camera.total_frames; frame++) {
     camera.current_displayed_frame = frame;
-    std::list<Ball> init_balls = generate_init_balls(frame, 5);
+    std::list<Ball> init_balls = generate_init_balls(frame, 20);
 
     std::list<Ball *> end_balls, lone_balls;
 
@@ -180,17 +180,33 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     size_t max_connections = std::max(ball.connections_A, ball.connections_B);
     size_t min_connections = std::min(ball.connections_A, ball.connections_B);
 
+/*
     if (max_connections == 0) {
       // that is indeed strange and should not really happen, probably the graph
       // is not connected or maybe the thresholding is too aggressive
+      //return;
       assert(false);
+    }*/
+
+    if(min_connections == 0) {
+      return;
     }
+
+
 
     // if we have one connection on both, it seems to be a dead end
     if (max_connections == 1) {
       optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
       restart_indices.emplace_back(node_idx);
       std::cout << "Ending line at new found ending ..." << std::endl;
+      return;
+    }
+
+    // if we have a 1 and a 3, the probability that 3 is a mistake is high
+    if (min_connections == 1 && max_connections >= 3) {
+      optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
+      restart_indices.emplace_back(node_idx);
+      std::cout << "Ending line at new found strange position ..." << std::endl;
       return;
     }
 
@@ -235,9 +251,10 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
 
     // if we already have a ball in the graph at the same place, connect them
     double connect_radius = is_prob_junction ? 1.6 : 0.9;
-    if (graph.find_closest_ball(next_ball.center_m, next_index) <
+    if (graph.find_closest_ball(next_ball.center_m, node.index, next_index) <
         connect_radius) {
       // connect them, move on
+
       graph.connectNodes(node.index, next_index);
       node.explored_index = frame;
       graph.all_nodes[next_index].explored_index = frame;

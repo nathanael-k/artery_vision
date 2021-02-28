@@ -355,9 +355,12 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
                                           uint8_t radius,
                                           const cv::Mat &distances,
                                           const cv::Mat &threshold) {
-  assert(threshold.at<uint8_t>(coord) > 0);
+                                            std::vector<Circle> ret;
+  if(threshold.at<uint8_t>(coord) == 0)
+    return ret;
 
-  std::vector<Circle> ret;
+
+  
 
   // generate an array with values that corresponds to the circumference
   std::vector<cv::Point2i> coordinates;
