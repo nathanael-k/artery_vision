@@ -53,7 +53,7 @@ void maxPoolCircleConvolution(const cv::Mat &source, cv::Mat &destination) {
   cv::Mat buffer = destination;
   cv::filter2D(source, destination, -1, circleKernel(7));
 
-  for (int i = 8; i < 13; i++) {
+  for (int i = 8; i < 30; i++) {
     cv::filter2D(source, buffer, -1, circleKernel(i));
     destination = cv::max(buffer, destination);
   }

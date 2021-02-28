@@ -33,24 +33,25 @@ arteryGraph &ArteryReplicator::build_graph() {
     camera.current_displayed_frame = frame;
     std::list<Ball> init_balls = generate_init_balls(frame, 5);
 
-    std::list<Ball *> end_balls, middle_balls, junction_balls;
-    std::list<Ball *> hot_endings;
+    std::list<Ball *> end_balls, lone_balls;
 
     // add end init balls to the graph
     for (auto &ball : init_balls) {
       if (ball.connections_A == 0 || ball.connections_B == 0) {
-        // skip
+        lone_balls.emplace_back(&ball);
       } else if (ball.connections_A == 1 && ball.connections_B == 1) {
         end_balls.emplace_back(&ball);
       } else if (ball.connections_A >= 3 || ball.connections_B >= 3) {
-        junction_balls.emplace_back(&ball);
+        //junction_balls.emplace_back(&ball);
       } else if (ball.connections_A == 2 || ball.connections_B == 2) {
-        middle_balls.emplace_back(&ball);
+        //middle_balls.emplace_back(&ball);
       }
     }
 
     // we need at least one end ball to start the build
-    assert(end_balls.size() > 0);
+    //if (end_balls.size() == 0 && graph.all_node) {
+      // skip build
+    //}
 
     std::cout << "--- New Frame with " << end_balls.size()
               << " new ends to explore.\n";
@@ -296,6 +297,11 @@ void ArteryReplicator::start_at_end_ball(Ball &ball, const size_t frame_index) {
   while (circles_B.size() > 1) {
     radius_B += 0.1;
     circles_B = optimizer.report_adjacent_circles(true, radius_B, frame_index);
+  }
+
+  if (circles_A.size() == 0 || circles_B.size() == 0) 
+  {
+    return;
   }
 
   assert(circles_A.size() == 1 && circles_B.size() == 1);
