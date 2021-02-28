@@ -22,6 +22,9 @@ public:
 
   int display_source = 0;
 
+// at interesting nodes we want to make a restart every frame
+  std::vector<size_t> restart_indices;
+
 private:
   const std::string window_A, window_B, window_detail;
 
@@ -35,4 +38,7 @@ private:
   void explore_node(size_t node, size_t old_node, const size_t frame);
 
   void start_at_end_ball(Ball& ball, const size_t frame_index);
-};
+
+// we restart every frame from some interesting nodes
+  bool restart_at(const size_t node_idx, const size_t frame_index);
+  };

@@ -62,7 +62,7 @@ public:
   // starting from node, draw everything connected to it on layer index
   void drawGraph(const arteryGraph& graph, int index = 0) {
     for (const auto& node : graph.all_nodes){
-      renderBall(node.ball, index);
+      renderNode(node, index);
     }
   }
 
@@ -84,6 +84,8 @@ public:
   void renderPoint(Vector3d point, int label = -1, int index = 0);
 
   void renderBall(const Ball& ball, int index);
+
+  void renderNode(const arteryNode& node, int index);
 
   // #### methods for data preparation
 

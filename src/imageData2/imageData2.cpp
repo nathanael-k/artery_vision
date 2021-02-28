@@ -180,8 +180,16 @@ void imageData::renderPoint(Vector3d point, int label, int index) {
 void imageData::renderBall(const Ball &ball, int index) {
   Circle circle = project_circle(ball, cam);
   cv::circle(visualisation[index],
-             cv::Point(circle.location_px.x(), circle.location_px.y()), circle.radius_px,
-             CV_RGB(100, 100, 255), 1);
+             cv::Point(circle.location_px.x(), circle.location_px.y()),
+             circle.radius_px, CV_RGB(100, 100, 255), 1);
+}
+
+void imageData::renderNode(const arteryNode &node, int index) {
+  renderBall(node.ball, index);
+  Eigen::Vector2d text_center = cam.projectPoint(node.ball.center_m);
+  cv::putText(visualisation[index], std::to_string(node.index),
+              cv::Point(text_center.x(), text_center.y()), 0, 1,
+              CV_RGB(255, 255, 255));
 }
 
 int correlate(const cv::Mat &ref, const Camera &leadCam, const Camera &refCam,
@@ -387,10 +395,10 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
                                     coordinates[max_index].y);
         float radius_px = max_distance;
 
-// only add if we actually have some radius
+        // only add if we actually have some radius
         if (radius_px > 0.2 * radius) {
-        ret.emplace_back(position_px, radius_px,
-                         Eigen::Vector2d(coord.x, coord.y));
+          ret.emplace_back(position_px, radius_px,
+                           Eigen::Vector2d(coord.x, coord.y));
         }
         in_connection = false;
         max_distance = 0;
@@ -418,8 +426,8 @@ std::vector<Circle> find_adjacent_circles(const Circle &circle,
                                           const cv::Mat &distances,
                                           const cv::Mat &threshold) {
   cv::Point2i center(circle.location_px.x(), circle.location_px.y());
-  return find_adjacent_circles(center, circle.radius_px * radius_factor, distances,
-                               threshold);
+  return find_adjacent_circles(center, circle.radius_px * radius_factor,
+                               distances, threshold);
 }
 
 void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
