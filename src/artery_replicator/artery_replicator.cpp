@@ -27,8 +27,10 @@ ArteryReplicator::ArteryReplicator(const std::string &data_path,
 
 arteryGraph &ArteryReplicator::build_graph() {
 
-  size_t frame = 8;
+  change_visual(6, this);
 
+  for (size_t frame = 0; frame < camera.total_frames; frame++) {
+  camera.current_displayed_frame = frame;
   std::list<Ball> init_balls = generate_init_balls(frame, 5);
 
   std::list<Ball *> end_balls, middle_balls, junction_balls;
@@ -50,12 +52,16 @@ arteryGraph &ArteryReplicator::build_graph() {
   // we need at least one end ball to start the build
   assert(end_balls.size() > 0);
 
+  std::cout << "--- New Frame with " << end_balls.size() << " new ends to explore.\n";
+
   for (Ball *ball : end_balls) {
     start_at_end_ball(*ball, frame);
     camera.image_data_A.drawGraph(graph, frame);
     camera.image_data_B.drawGraph(graph, frame);
     update_display(0, this);
     cv::waitKey();
+  }
+
   }
 
   return graph;
