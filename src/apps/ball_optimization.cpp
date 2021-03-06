@@ -34,6 +34,15 @@ int main(int argc, char **argv) {
                      replicator.camera.total_frames - 1, ArteryReplicator::update_display, &replicator);
   cv::createTrackbar("Vis. Src:", "", &replicator.display_source, 6, ArteryReplicator::change_visual, &replicator);
   
+// create known ball
+//Ball first_junction({Vector3d(0,0,0), Vector3d(-7.75, -0.143, -8.633), 0.5, 1});
+
+// render known ball on all images
+//replicator.graph.add_ball(first_junction);
+//replicator.camera.image_data_A.drawGraph(replicator.graph, 4);
+//replicator.camera.image_data_B.drawGraph(replicator.graph, 4);
+//replicator.update_display(4, &replicator);
+
 
   arteryGraph& graph = replicator.build_graph();
   

@@ -86,7 +86,7 @@ std::list<Ball> init_balls(const std::vector<Circle> &circles_A,
   std::list<Ball> ret;
   size_t count = std::min(circles_A.size(), circles_B.size());
   double max = distances.maxCoeff();
-  double cutoff = 0.1;
+  double cutoff = 0.15;
 
  for (int i = 0; i < count; i++) {
       Eigen::MatrixXd::Index minRow, minCol;
