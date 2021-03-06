@@ -100,7 +100,7 @@ imageData::imageData(std::string metaFolder, const Camera &camera)
   buffer.resize(size);
   distance.resize(size);
   for (int i = 0; i < size; i++) {
-    cv::threshold(source[i], threshold[i], 128, 255, cv::THRESH_BINARY_INV);
+    cv::threshold(source[i], threshold[i], 140, 255, cv::THRESH_BINARY_INV);
     source[i].copyTo(visualisation[i]);
     source[i].copyTo(endpoints[i]);
     source[i].copyTo(buffer[i]);
