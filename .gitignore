@@ -6,3 +6,6 @@ lib
 .idea
 .cache
 data/out
+data/real/source
+data/real/tiff
+*.blend1
