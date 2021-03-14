@@ -8,7 +8,8 @@
 // debug nan
 #include <fenv.h>
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
   feenableexcept(FE_INVALID | FE_OVERFLOW);
 
@@ -22,20 +23,18 @@ int main(int argc, char **argv) {
   cv::namedWindow(window_B, cv::WINDOW_AUTOSIZE);
   cv::namedWindow(window_detail, cv::WINDOW_AUTOSIZE);
 
-  
   //ArteryReplicator replicator("../data/renders/easy_flow_3/", window_A, window_B, window_detail);
-
+  //ArteryReplicator replicator("../data/renders/heart/", window_A, window_B, window_detail);
   //ArteryReplicator replicator("../data/renders/aorta_to_brain/", window_A, window_B, window_detail);
-//ArteryReplicator replicator("../data/renders/flow_1/", window_A, window_B, window_detail);
-ArteryReplicator replicator("../data/renders/real_brain/", window_A, window_B, window_detail);
+  //ArteryReplicator replicator("../data/renders/flow_1/", window_A, window_B, window_detail);
+  ArteryReplicator replicator("../data/renders/real_brain/", window_A, window_B, window_detail);
 
   cv::createTrackbar("Frame:", "", &replicator.camera.current_displayed_frame,
                      replicator.camera.total_frames - 1, ArteryReplicator::update_display, &replicator);
   cv::createTrackbar("Vis. Src:", "", &replicator.display_source, 6, ArteryReplicator::change_visual, &replicator);
-  
 
-  arteryGraph& graph = replicator.build_graph();
-  
+  arteryGraph &graph = replicator.build_graph();
+
   std::ofstream file;
   file.open("../data/out/graph.txt");
 
