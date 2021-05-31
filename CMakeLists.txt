@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 enable_testing()
 add_subdirectory( test )
+add_subdirectory( src/apps)
 
 find_package(OpenCV REQUIRED PATHS /home/nk/Desktop/opencv_build_2 NO_DEFAULT_PATH)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
@@ -34,18 +35,13 @@ set(CMAKE_FIND_DEBUG_MODE TRUE)
 #find_library(LIBZHANGSUEN zhangsuen lib REQUIRED)
 #find_library(LIBCAMERA camera lib REQUIRED)
 
-add_executable(artery_vision src/main.cpp)
-add_executable(2camtime src/apps/2camtime.cpp src/imageStereoAnalyzer/image_stereo_analyzer.cpp include/image_stereo_analyzer.h)
-add_executable(ball_optimization src/apps/ball_optimization.cpp)
 
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
+
 target_link_libraries(test_camera ${OpenCV_LIBS} camera Eigen3::Eigen)
 target_link_libraries(test_net arteryNet Eigen3::Eigen)
 target_link_libraries(imageData ${OpenCV_LIBS} Eigen3::Eigen)
 
 target_link_libraries(imageData2 ${OpenCV_LIBS} Eigen3::Eigen)
-target_link_libraries(2camtime ${OpenCV_LIBS} imageData camera arteryNet Eigen3::Eigen)
 target_link_libraries(stereo_camera camera)
 target_link_libraries(ball_optimizer ${OpenCV_LIBS} ball imageData2)
 target_link_libraries(artery_replicator ${OpenCV_LIBS} arteryNet2 stereo_camera ball_optimizer)
-target_link_libraries(ball_optimization ${OpenCV_LIBS} arteryNet2 artery_replicator)
