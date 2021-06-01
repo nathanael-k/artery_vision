@@ -1,15 +1,12 @@
-#include "arteryNet2.h"
-#include "ball.h"
-#include "imageData2.h"
+#include <ball_optimizer.h>
+
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-#include "stereo_camera.h"
 
 #include <Eigen/src/Core/Matrix.h>
-#include <ball_optimizer.h>
 #include <cstddef>
 #include <limits>
 #include <ostream>
@@ -17,8 +14,10 @@
 BallOptimizer::BallOptimizer(Ball &ball, const StereoCamera &stereo_camera)
     : ball(ball), stereo_camera(stereo_camera){};
 
-void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
-  for (int i = 0; i < steps; i++) {
+void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index)
+{
+  for (int i = 0; i < steps; i++)
+  {
     step(1.0, frame_index);
   }
 };
@@ -26,23 +25,28 @@ void BallOptimizer::optimize(const uint16_t steps, const uint8_t frame_index) {
 void BallOptimizer::optimize_constrained(const uint16_t steps,
                                          const uint8_t frame_index,
                                          const Ball &constrain,
-                                         double radius_factor) {
-  for (int i = 0; i < steps; i++) {
+                                         double radius_factor)
+{
+  for (int i = 0; i < steps; i++)
+  {
     step_constrained(1.0, frame_index, constrain, radius_factor);
   }
 }
 
 void BallOptimizer::optimize_junction(const uint16_t steps,
-                                      const uint8_t frame_index) {
+                                      const uint8_t frame_index)
+{
   // right now we assume 3 junctions on both cameras
   //assert(ball.connections_A == 3);
   //assert(ball.connections_B == 3);
-  for (int i = 0; i < steps; i++) {
+  for (int i = 0; i < steps; i++)
+  {
     step_junction(1.0, frame_index);
   }
 };
 
-void BallOptimizer::step(const double dx, const uint8_t frame_index) {
+void BallOptimizer::step(const double dx, const uint8_t frame_index)
+{
   // calculate CircleGradients for both cameras
 
   Circle circleA = project_circle(ball, stereo_camera.camera_A);
@@ -63,12 +67,14 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index) {
 
 void BallOptimizer::step_constrained(const double dx, const uint8_t frame_index,
                                      const Ball &constrain,
-                                     double radius_factor) {
+                                     double radius_factor)
+{
   step(dx, frame_index);
   ball.project_to_surface(constrain, radius_factor);
 }
 
-void BallOptimizer::step_junction(const double dx, const uint8_t frame_index) {
+void BallOptimizer::step_junction(const double dx, const uint8_t frame_index)
+{
   // we can optimize both circles as junctions
   Circle circleA = project_circle(ball, stereo_camera.camera_A);
   Circle circleB = project_circle(ball, stereo_camera.camera_B);
@@ -77,14 +83,17 @@ void BallOptimizer::step_junction(const double dx, const uint8_t frame_index) {
 
   double factor_A, factor_B = 1.0;
   // find out at which radius factor we still have 3 junctions
-  for (factor_A = 1.0; factor_A < 2; factor_A += 0.1) {
+  for (factor_A = 1.0; factor_A < 2; factor_A += 0.1)
+  {
     adjacent_A = report_adjacent_circles(false, factor_A, frame_index);
-    if (adjacent_A.size() == 3) {
+    if (adjacent_A.size() == 3)
+    {
       break;
     }
   }
 
-  for (factor_B = 1.0; factor_B < 2; factor_B += 0.1) {
+  for (factor_B = 1.0; factor_B < 2; factor_B += 0.1)
+  {
     adjacent_B = report_adjacent_circles(true, factor_B, frame_index);
     if (adjacent_B.size() == 3)
       break;
@@ -106,7 +115,8 @@ void BallOptimizer::step_junction(const double dx, const uint8_t frame_index) {
 
 CircleGradient BallOptimizer::get_gradient(const Circle &circle,
                                            uint8_t camera_index,
-                                           const uint8_t frame_index) const {
+                                           const uint8_t frame_index) const
+{
 
   // setting:
   uint8_t derivative_kernel_size = 31;
@@ -226,12 +236,18 @@ CircleGradient BallOptimizer::get_gradient(const Circle &circle,
 
   // return the gradient
   return {
-      quality,      inner_rot_grad,     outer_rot_grad,     scale_1_grad,
-      scale_2_grad, translation_1_grad, translation_2_grad,
+      quality,
+      inner_rot_grad,
+      outer_rot_grad,
+      scale_1_grad,
+      scale_2_grad,
+      translation_1_grad,
+      translation_2_grad,
   };
 }
 
-cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source) {
+cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source)
+{
   int min_x, min_y, max_x, max_y;
   min_x = center.x - radius;
   min_y = center.y - radius;
@@ -258,7 +274,8 @@ cv::Mat grab_region(cv::Point center, int radius, const cv::Mat &source) {
 std::vector<Circle>
 BallOptimizer::report_adjacent_circles(bool check_cam_B,
                                        const double radius_factor,
-                                       const size_t frame_index) const {
+                                       const size_t frame_index) const
+{
   const imageData &data =
       check_cam_B ? stereo_camera.image_data_B : stereo_camera.image_data_A;
 
@@ -270,7 +287,8 @@ BallOptimizer::report_adjacent_circles(bool check_cam_B,
 
 Eigen::Vector2d BallOptimizer::report_smallest_gap_direction(
     bool check_cam_B, const Circle &circle, const double radius_factor,
-    const size_t frame_index) const {
+    const size_t frame_index) const
+{
   const imageData &data =
       check_cam_B ? stereo_camera.image_data_B : stereo_camera.image_data_A;
   // extract region around center of circle
@@ -284,10 +302,11 @@ Eigen::Vector2d BallOptimizer::report_smallest_gap_direction(
 
   size_t start = 0;
   size_t count = circle_values.size();
-  
+
   // we want to start at a 1, if we have 0s at the beginning we put them at the
   // back
-  while (circle_values[start] == 0 && start < count) {
+  while (circle_values[start] == 0 && start < count)
+  {
     circle_values.emplace_back(circle_values[start]);
     start++;
   }
@@ -299,13 +318,17 @@ Eigen::Vector2d BallOptimizer::report_smallest_gap_direction(
   size_t streak_end;
   double in_streak = false;
 
-  for (size_t index = start; index < circle_values.size(); index++) {
-    if (circle_values[index] > 0) {
-      if (in_streak) {
+  for (size_t index = start; index < circle_values.size(); index++)
+  {
+    if (circle_values[index] > 0)
+    {
+      if (in_streak)
+      {
         // close streak
         streak_end = index;
         size_t streak_length = streak_end - streak_start;
-        if (streak_length < min_streak){
+        if (streak_length < min_streak)
+        {
           min_streak = streak_length;
           cv::Point min_point = coordinates[((streak_start - 1 + streak_end) / 2) % count];
           min_center = Eigen::Vector2d(min_point.x, min_point.y);
@@ -313,20 +336,24 @@ Eigen::Vector2d BallOptimizer::report_smallest_gap_direction(
 
         in_streak = false;
       }
-    } else {
+    }
+    else
+    {
       // we have a zero
-      if (!in_streak) {
+      if (!in_streak)
+      {
         in_streak = true;
         streak_start = index;
       }
     }
   }
 
-  return (min_center-circle.location_px).normalized();
+  return (min_center - circle.location_px).normalized();
 }
 
 Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
-                      const StereoCamera &stereo_camera) {
+                      const StereoCamera &stereo_camera)
+{
   const Camera &cam_A = stereo_camera.camera_A;
   const Camera &cam_B = stereo_camera.camera_B;
 
@@ -344,7 +371,8 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
   double radius = std::min(radius_A, radius_B);
 
   // assert the radii do not disagree too much
-  if( abs(radius_A / radius_B - 1) < 0.3) {
+  if (abs(radius_A / radius_B - 1) < 0.3)
+  {
     radius = (radius_A + radius_B) * 0.5;
   }
 
@@ -377,16 +405,19 @@ Ball triangulate_ball(const Circle &circle_A, const Circle &circle_B,
 }
 
 Circle find_furthest_circle(const std::vector<Circle> &circles,
-                            const Circle &query_circle) {
+                            const Circle &query_circle)
+{
   assert(circles.size() > 0);
 
   double max_distance = 0;
   size_t max_index;
 
-  for (int i = 0; i < circles.size(); i++) {
+  for (int i = 0; i < circles.size(); i++)
+  {
     double distance =
         (circles[i].location_px - query_circle.location_px).norm();
-    if (distance > max_distance) {
+    if (distance > max_distance)
+    {
       max_index = i;
       max_distance = distance;
     }

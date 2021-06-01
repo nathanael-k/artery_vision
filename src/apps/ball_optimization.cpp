@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   // 3 phantom models:
   //ArteryReplicator replicator("../data/renders/heart/", window_A, window_B, window_detail);
   //ArteryReplicator replicator("../data/renders/aorta_to_brain/", window_A, window_B, window_detail);
-  ArteryReplicator replicator("../data/renders/real_brain/", window_A, window_B, window_detail);
+  ArteryReplicator replicator("../../../data/renders/real_brain/", window_A, window_B, window_detail);
 
   // UI
   cv::createTrackbar("Frame:", "", &replicator.camera.current_displayed_frame,

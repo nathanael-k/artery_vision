@@ -1,6 +1,6 @@
 #include <artery_replicator.h>
 
-#include "imageData2.h"
+#include <imageData2.h>
 #include <arteryNet2.h>
 #include <cstddef>
 #include <stereo_camera.h>

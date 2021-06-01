@@ -21,7 +21,8 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 
 // enum to define different data to display
-enum class from {
+enum class from
+{
   source,
   threshold,
   initConv,
@@ -35,7 +36,8 @@ cv::Mat circleKernel(uint16_t kernel_radius);
 
 void maxPoolCircleConvolution(const cv::Mat &source, cv::Mat &destination);
 
-class imageData {
+class imageData
+{
 public:
   std::vector<cv::Mat> source, threshold, initConv, distance, visualisation,
       endpoints, buffer;
@@ -60,8 +62,10 @@ public:
   // #### methods for visualisation
 
   // starting from node, draw everything connected to it on layer index
-  void drawGraph(const arteryGraph& graph, int index = 0) {
-    for (const auto& node : graph.all_nodes){
+  void drawGraph(const arteryGraph &graph, int index = 0)
+  {
+    for (const auto &node : graph.all_nodes)
+    {
       renderNode(node, index);
     }
   }
@@ -83,9 +87,9 @@ public:
   // draw a circle in 3d coordinates, write label if label is >= 0
   void renderPoint(Vector3d point, int label = -1, int index = 0);
 
-  void renderBall(const Ball& ball, int index);
+  void renderBall(const Ball &ball, int index);
 
-  void renderNode(const arteryNode& node, int index);
+  void renderNode(const arteryNode &node, int index);
 
   // #### methods for data preparation
 
@@ -106,18 +110,21 @@ public:
                      int dilation_size = 4);
 
   // call prepareLayers for all images in the sequence
-  void prepareAllLayers() {
-    for (int i = 0; i < size; i++) {
+  void prepareAllLayers()
+  {
+    for (int i = 0; i < size; i++)
+    {
       prepareLayers(i);
     }
   }
 
   // makes sure that our endpoint buffer is as required (paint it) at index
-  void prepareEndpoints(int index = 0); 
+  void prepareEndpoints(int index = 0);
 };
 
 // a combination that we already know correlates, but we keep it for later
-struct candidate {
+struct candidate
+{
   imageData &lead;
   imageData &reference;
   Vector2d leadPixel, refPixel;
@@ -176,11 +183,10 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
                                           const cv::Mat &threshold);
 
 std::vector<Circle> find_adjacent_circles(const Circle &circle,
-                                          const double radius_factor, 
+                                          const double radius_factor,
                                           const cv::Mat &distances,
                                           const cv::Mat &threshold);
 
 std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
                                          const cv::Mat &threshold,
                                          const cv::Mat &distances);
-
