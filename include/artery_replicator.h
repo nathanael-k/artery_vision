@@ -25,7 +25,7 @@ public:
 // at interesting nodes we want to make a restart every frame
   std::vector<size_t> restart_indices;
 
-private:
+// private:
   const std::string window_A, window_B, window_detail;
 
   arteryGraph graph;
