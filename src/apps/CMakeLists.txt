@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.17)
 
 add_executable(ball_optimization ball_optimization.cpp)
 

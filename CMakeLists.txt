@@ -23,7 +23,7 @@ add_library(stereo_camera STATIC src/stereo_camera/stereo_camera.cpp include/ste
 add_library(ball_optimizer STATIC src/ball_optimizer/ball_optimizer.cpp include/ball_optimizer.h)
 add_library(artery_replicator STATIC src/artery_replicator/artery_replicator.cpp include/artery_replicator.h)
 
-
+target_include_directories(arteryNet2 PUBLIC include)
 
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
