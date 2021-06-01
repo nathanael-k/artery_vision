@@ -97,7 +97,10 @@ std::list<Ball> init_balls(const std::vector<Circle> &circles_A,
   std::list<Ball> ret;
   size_t count = std::min(circles_A.size(), circles_B.size());
   double max = distances.maxCoeff();
-  double cutoff = 0.15;
+
+  // cutoff might have to be larger for less accurate camera position
+  double cutoff = 0.1; // rendered
+  //double cutoff = 0.15; // printed
 
   for (int i = 0; i < count; i++)
   {

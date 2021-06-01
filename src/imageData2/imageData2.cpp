@@ -18,7 +18,8 @@
 #include <imageData2.h>
 #include <sys/types.h>
 
-cv::Mat circleKernel(uint16_t kernel_radius) {
+cv::Mat circleKernel(uint16_t kernel_radius)
+{
   uint16_t inner_size_px = kernel_radius * 2 + 1;
   uint16_t outer_size_px = kernel_radius * 4 + 1;
   uint16_t delta_radius_px = kernel_radius;
@@ -48,18 +49,21 @@ cv::Mat circleKernel(uint16_t kernel_radius) {
   return kernel;
 }
 
-void maxPoolCircleConvolution(const cv::Mat &source, cv::Mat &destination) {
+void maxPoolCircleConvolution(const cv::Mat &source, cv::Mat &destination)
+{
   // max of convolutions of different filter sizes
   cv::Mat buffer = destination;
   cv::filter2D(source, destination, -1, circleKernel(7));
 
-  for (int i = 8; i < 30; i++) {
+  for (int i = 8; i < 30; i++)
+  {
     cv::filter2D(source, buffer, -1, circleKernel(i));
     destination = cv::max(buffer, destination);
   }
 }
 
-void initCircleCenters(const cv::Mat &source, cv::Mat &destination) {
+void initCircleCenters(const cv::Mat &source, cv::Mat &destination)
+{
   // find promising spots
   maxPoolCircleConvolution(source, destination);
   // find local maxima
@@ -72,11 +76,13 @@ void initCircleCenters(const cv::Mat &source, cv::Mat &destination) {
 }
 
 imageData::imageData(std::string metaFolder, const Camera &camera)
-    : cam(camera) {
+    : cam(camera)
+{
   // read size from file
   std::ifstream inFile;
   inFile.open(metaFolder + "meta");
-  if (!inFile) {
+  if (!inFile)
+  {
     std::cerr << "Unable to open file: " << metaFolder;
     exit(1); // call system to stop
   }
@@ -86,7 +92,8 @@ imageData::imageData(std::string metaFolder, const Camera &camera)
   // getSize
   inFile >> size;
   // read all files
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     char buffer[50];
     int n = sprintf(buffer, "%03d", i);
     assert(n < 50);
@@ -99,8 +106,11 @@ imageData::imageData(std::string metaFolder, const Camera &camera)
   threshold.resize(size);
   buffer.resize(size);
   distance.resize(size);
-  for (int i = 0; i < size; i++) {
-    cv::threshold(source[i], threshold[i], 140, 255, cv::THRESH_BINARY_INV);
+  for (int i = 0; i < size; i++)
+  {
+    // THRESHOLDING might have to be adjusted depending on source images
+    cv::threshold(source[i], threshold[i], 128, 255, cv::THRESH_BINARY_INV); // rendered
+    //cv::threshold(source[i], threshold[i], 140, 255, cv::THRESH_BINARY_INV); // printed
     source[i].copyTo(visualisation[i]);
     source[i].copyTo(endpoints[i]);
     source[i].copyTo(buffer[i]);
@@ -111,43 +121,58 @@ imageData::imageData(std::string metaFolder, const Camera &camera)
   }
 }
 
-void imageData::resetVisual(from where, int frame) {
-  if (where == from::source) {
+void imageData::resetVisual(from where, int frame)
+{
+  if (where == from::source)
+  {
     curr_displayed = &source;
   }
-  if (where == from::threshold) {
-    if (!threshold[frame].empty()) {
+  if (where == from::threshold)
+  {
+    if (!threshold[frame].empty())
+    {
       curr_displayed = &threshold;
     }
   }
-  if (where == from::initConv) {
-    if (!initConv[frame].empty()) {
+  if (where == from::initConv)
+  {
+    if (!initConv[frame].empty())
+    {
       curr_displayed = &initConv;
     }
   }
-  if (where == from::visualisation) {
-    if (!visualisation[frame].empty()) {
+  if (where == from::visualisation)
+  {
+    if (!visualisation[frame].empty())
+    {
       curr_displayed = &visualisation;
     }
   }
-  if (where == from::endpoints) {
-    if (!endpoints[frame].empty()) {
+  if (where == from::endpoints)
+  {
+    if (!endpoints[frame].empty())
+    {
       curr_displayed = &endpoints;
     }
   }
-  if (where == from::buffer) {
-    if (!buffer[frame].empty()) {
+  if (where == from::buffer)
+  {
+    if (!buffer[frame].empty())
+    {
       curr_displayed = &buffer;
     }
   }
-  if (where == from::distance) {
-    if (!distance[frame].empty()) {
+  if (where == from::distance)
+  {
+    if (!distance[frame].empty())
+    {
       curr_displayed = &distance;
     }
   }
 }
 
-void imageData::renderLine(const Eigen::Vector4d &line, int index) {
+void imageData::renderLine(const Eigen::Vector4d &line, int index)
+{
   assert(index < visualisation.size());
   cv::Point A(line[0], line[1]);
   cv::Point B(line[2], line[3]);
@@ -155,7 +180,8 @@ void imageData::renderLine(const Eigen::Vector4d &line, int index) {
 }
 
 void imageData::renderLine(const Eigen::Vector3d &begin,
-                           const Eigen::Vector3d &end, int index) {
+                           const Eigen::Vector3d &end, int index)
+{
   assert(index < visualisation.size());
   Vector2d a, b;
   a = cam.projectPoint(begin);
@@ -165,7 +191,8 @@ void imageData::renderLine(const Eigen::Vector3d &begin,
   cv::line(visualisation[index], A, B, CV_RGB(255, 100, 100));
 }
 
-void imageData::renderPoint(Vector2d point, int label, int index) {
+void imageData::renderPoint(Vector2d point, int label, int index)
+{
   cv::Point P(point[0], point[1]);
   cv::circle(visualisation[index], P, 3, CV_RGB(100, 100, 255), 2);
   if (label >= 0)
@@ -173,18 +200,21 @@ void imageData::renderPoint(Vector2d point, int label, int index) {
                 CV_RGB(255, 255, 255));
 }
 
-void imageData::renderPoint(Vector3d point, int label, int index) {
+void imageData::renderPoint(Vector3d point, int label, int index)
+{
   renderPoint(cam.projectPoint(point), label, index);
 }
 
-void imageData::renderBall(const Ball &ball, int index) {
+void imageData::renderBall(const Ball &ball, int index)
+{
   Circle circle = project_circle(ball, cam);
   cv::circle(visualisation[index],
              cv::Point(circle.location_px.x(), circle.location_px.y()),
              circle.radius_px, CV_RGB(100, 100, 255), 1);
 }
 
-void imageData::renderNode(const arteryNode &node, int index) {
+void imageData::renderNode(const arteryNode &node, int index)
+{
   renderBall(node.ball, index);
   Eigen::Vector2d text_center = cam.projectPoint(node.ball.center_m);
   cv::putText(visualisation[index], std::to_string(node.index),
@@ -195,22 +225,27 @@ void imageData::renderNode(const arteryNode &node, int index) {
 int correlate(const cv::Mat &ref, const Camera &leadCam, const Camera &refCam,
               const Vector2d &leadPixel, const Vector2d &refPixel,
               Vector2d &bestPixel, Vector3d &point, double &distance, int range,
-              int cutoff) {
+              int cutoff)
+{
 
   distance = std::numeric_limits<double>::max();
   int pixelDistance = -1;
 
   // go trough whole neighbourhood
-  for (int i = -range; i <= range; i++) {
-    for (int j = -range; j <= range; j++) {
+  for (int i = -range; i <= range; i++)
+  {
+    for (int j = -range; j <= range; j++)
+    {
       Vector2d location = refPixel + Vector2d(i, j);
       // is it part of the skeleton?
-      if (ref.at<uchar>(location.y(), location.x()) < cutoff) {
+      if (ref.at<uchar>(location.y(), location.x()) < cutoff)
+      {
         Vector3d test;
         double dist =
             Camera::intersect(leadCam, leadPixel, refCam, refPixel, test);
         // is it closer?
-        if (dist < distance) {
+        if (dist < distance)
+        {
           bestPixel = location;
           distance = dist;
           point = test;
@@ -226,11 +261,13 @@ int correlate(const cv::Mat &ref, const Camera &leadCam, const Camera &refCam,
 Vector2d double_locate(cv::Mat &prio, cv::Mat &backup,
                        const cv::Mat &components, const Eigen::Vector4d &line,
                        const Vector2d pos, const Camera &cam_ref,
-                       const Vector2d &pixel_ref, const Camera &cam_new) {
+                       const Vector2d &pixel_ref, const Camera &cam_new)
+{
 
   Vector2d res =
       locate(prio, components, line, pos, cam_ref, pixel_ref, cam_new);
-  if (res == Vector2d(-1, -1)) {
+  if (res == Vector2d(-1, -1))
+  {
     res = locate(backup, components, line, pos, cam_ref, pixel_ref, cam_new);
   }
   assert(res != Vector2d(-1, -1));
@@ -240,9 +277,11 @@ Vector2d double_locate(cv::Mat &prio, cv::Mat &backup,
 Vector2d locate(cv::Mat &ref, const cv::Mat &components,
                 const Eigen::Vector4d &line, const Vector2d pos,
                 const Camera &cam_ref, const Vector2d &pixel_ref,
-                const Camera &cam_new) {
+                const Camera &cam_new)
+{
 
-  struct candidate {
+  struct candidate
+  {
     Vector2d location;
     int component;
     double distance;
@@ -259,23 +298,28 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
   Vector2d start(line[0], line[1]);
   Vector2d end(line[2], line[3]);
   Vector2d delta = end - start;
-  if (abs(delta.x()) > abs(delta.y())) {
+  if (abs(delta.x()) > abs(delta.y()))
+  {
     delta /= abs(delta.x());
     weak_index = 0;
-  } else {
+  }
+  else
+  {
     delta /= abs(delta.y());
     weak_index = 1;
   }
 
   Vector2d side = delta.normalized();
 
-  for (int off = -3; off <= 3; off++) {
+  for (int off = -3; off <= 3; off++)
+  {
 
     Vector2d curr = start;
     curr.y() += off * side.x() * 15;
     int curr_weak = curr[weak_index];
 
-    for (int i = 0; i < ref.cols; i++) {
+    for (int i = 0; i < ref.cols; i++)
+    {
       if (ref.at<uchar>(curr.y(), curr.x()) > 200)
         candidates.push_back(
             {curr, components.at<uchar>(curr.y(), curr.x()),
@@ -285,7 +329,8 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
       // debug draw to see something
       curr += delta;
       // 4 connected!
-      if (curr_weak != curr[weak_index]) {
+      if (curr_weak != curr[weak_index])
+      {
         Vector2d buff = curr;
         buff[weak_index] = curr_weak;
         if (ref.at<uchar>(buff.y(), buff.x()) > 200)
@@ -306,9 +351,11 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
 
   double distance = std::numeric_limits<double>::max();
   int best_component;
-  for (auto &candy : candidates) {
+  for (auto &candy : candidates)
+  {
     double dist = (candy.location - pos).norm();
-    if (dist < distance) {
+    if (dist < distance)
+    {
       best_component = candy.component;
       distance = dist;
     }
@@ -316,10 +363,13 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
 
   // on the closest component, find the best match
   distance = std::numeric_limits<double>::max();
-  for (auto &candy : candidates) {
-    if (candy.component == best_component) {
+  for (auto &candy : candidates)
+  {
+    if (candy.component == best_component)
+    {
 
-      if (candy.distance < distance) {
+      if (candy.distance < distance)
+      {
         best = candy.location;
         distance = candy.distance;
       }
@@ -330,7 +380,8 @@ Vector2d locate(cv::Mat &ref, const cv::Mat &components,
 }
 
 Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
-                         const cv::Mat &threshold) {
+                         const cv::Mat &threshold)
+{
   // check if coordinate is even valid according to distance map
   assert(threshold.at<uint8_t>(coord) > 0);
 
@@ -344,7 +395,8 @@ Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
   Circle ret(Eigen::Vector2d(coord.x, coord.y), radius, 0);
 
   ret.connections = circles.size();
-  if (circles.size() > 0) {
+  if (circles.size() > 0)
+  {
     ret.point_at(circles[0].location_px);
   }
 
@@ -354,13 +406,11 @@ Circle initialize_Circle(const cv::Point &coord, const cv::Mat &distances,
 std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
                                           uint8_t radius,
                                           const cv::Mat &distances,
-                                          const cv::Mat &threshold) {
-                                            std::vector<Circle> ret;
-  if(threshold.at<uint8_t>(coord) == 0)
+                                          const cv::Mat &threshold)
+{
+  std::vector<Circle> ret;
+  if (threshold.at<uint8_t>(coord) == 0)
     return ret;
-
-
-  
 
   // generate an array with values that corresponds to the circumference
   std::vector<cv::Point2i> coordinates;
@@ -375,7 +425,8 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
 
   // we want to start at a 0, if we have 1s at the beginning we put them at the
   // back
-  while (circle_values[start] > 0 && start < count) {
+  while (circle_values[start] > 0 && start < count)
+  {
     circle_values.emplace_back(circle_values[start]);
     start++;
   }
@@ -388,9 +439,12 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
   float max_distance = 0;
   size_t max_index;
 
-  for (size_t index = start; index < circle_values.size(); index++) {
-    if (circle_values[index] == 0) {
-      if (in_connection) {
+  for (size_t index = start; index < circle_values.size(); index++)
+  {
+    if (circle_values[index] == 0)
+    {
+      if (in_connection)
+      {
         // close connection and generate circle
         // center of the circle is the maximum value of distances
 
@@ -399,22 +453,27 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
         float radius_px = max_distance;
 
         // only add if we actually have some radius
-        if (radius_px > 0.2 * radius) {
+        if (radius_px > 0.2 * radius)
+        {
           ret.emplace_back(position_px, radius_px,
                            Eigen::Vector2d(coord.x, coord.y));
         }
         in_connection = false;
         max_distance = 0;
       }
-    } else {
+    }
+    else
+    {
       // we have a one
       size_t capped_index = index % count;
       float distance = distances.at<float>(coordinates[capped_index]);
-      if (distance > max_distance) {
+      if (distance > max_distance)
+      {
         max_distance = distance;
         max_index = capped_index;
       }
-      if (!in_connection) {
+      if (!in_connection)
+      {
         in_connection = true;
         connection_start = index;
       }
@@ -427,27 +486,32 @@ std::vector<Circle> find_adjacent_circles(const cv::Point &coord,
 std::vector<Circle> find_adjacent_circles(const Circle &circle,
                                           const double radius_factor,
                                           const cv::Mat &distances,
-                                          const cv::Mat &threshold) {
+                                          const cv::Mat &threshold)
+{
   cv::Point2i center(circle.location_px.x(), circle.location_px.y());
   return find_adjacent_circles(center, circle.radius_px * radius_factor,
                                distances, threshold);
 }
 
 void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
-                             cv::Point2i center, u_int8_t radius) {
+                             cv::Point2i center, u_int8_t radius)
+{
   // Bresenham
   std::vector<cv::Point2i> first_octant;
   int x = 0;
   int y = radius;
   int d = 3 - 2 * radius;
   first_octant.emplace_back(cv::Point(x, y));
-  while (y > x) {
+  while (y > x)
+  {
     x++;
 
-    if (d > 0) {
+    if (d > 0)
+    {
       y--;
       d = d + 4 * (x - y) + 10;
-    } else
+    }
+    else
       d = d + 4 * x + 6;
 
     first_octant.emplace_back(cv::Point(x, y));
@@ -458,41 +522,49 @@ void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
 
   // copy into octants and apply center translation
   // top right quadrant is +x -y
-  for (int i = 0; i < first_octant.size(); i++) {
+  for (int i = 0; i < first_octant.size(); i++)
+  {
     coordinates.emplace_back(center.x + first_octant[i].x,
                              center.y - first_octant[i].y);
   }
-  for (int i = first_octant.size() - 2; i >= 0; i--) {
+  for (int i = first_octant.size() - 2; i >= 0; i--)
+  {
     coordinates.emplace_back(center.x + first_octant[i].y,
                              center.y - first_octant[i].x);
   }
 
   // bottom right quadrant is +x +y
-  for (int i = 1; i < first_octant.size(); i++) {
+  for (int i = 1; i < first_octant.size(); i++)
+  {
     coordinates.emplace_back(center.x + first_octant[i].y,
                              center.y + first_octant[i].x);
   }
-  for (int i = first_octant.size() - 2; i >= 0; i--) {
+  for (int i = first_octant.size() - 2; i >= 0; i--)
+  {
     coordinates.emplace_back(center.x + first_octant[i].x,
                              center.y + first_octant[i].y);
   }
 
   // bottom left quadrant is -x +y
-  for (int i = 1; i < first_octant.size(); i++) {
+  for (int i = 1; i < first_octant.size(); i++)
+  {
     coordinates.emplace_back(center.x - first_octant[i].x,
                              center.y + first_octant[i].y);
   }
-  for (int i = first_octant.size() - 2; i >= 0; i--) {
+  for (int i = first_octant.size() - 2; i >= 0; i--)
+  {
     coordinates.emplace_back(center.x - first_octant[i].y,
                              center.y + first_octant[i].x);
   }
 
   // top left quadrant is -x -y
-  for (int i = 1; i < first_octant.size(); i++) {
+  for (int i = 1; i < first_octant.size(); i++)
+  {
     coordinates.emplace_back(center.x - first_octant[i].y,
                              center.y - first_octant[i].x);
   }
-  for (int i = first_octant.size() - 2; i >= 1; i--) {
+  for (int i = first_octant.size() - 2; i >= 1; i--)
+  {
     coordinates.emplace_back(center.x - first_octant[i].x,
                              center.y - first_octant[i].y);
   }
@@ -500,7 +572,8 @@ void fill_circle_coordinates(std::vector<cv::Point2i> &coordinates,
   // all coordinates collected
 }
 
-bool in_bounds(cv::Point point, const cv::Mat& mat) {
+bool in_bounds(cv::Point point, const cv::Mat &mat)
+{
   if (point.x < 0 || point.y < 0)
     return false;
   if (point.x >= mat.cols || point.y >= mat.rows)
@@ -511,10 +584,12 @@ bool in_bounds(cv::Point point, const cv::Mat& mat) {
 
 void fill_array(std::vector<u_int8_t> &array,
                 const std::vector<cv::Point2i> &coordinates,
-                const cv::Mat &source) {
+                const cv::Mat &source)
+{
   array.clear();
   array.reserve(coordinates.size());
-  for (const auto &coord : coordinates) {
+  for (const auto &coord : coordinates)
+  {
     if (in_bounds(coord, source))
       array.emplace_back(source.at<uint8_t>(coord));
     else
@@ -522,16 +597,17 @@ void fill_array(std::vector<u_int8_t> &array,
   }
 }
 
-
 std::vector<Circle> extract_init_circles(size_t count, const cv::Mat &init,
                                          const cv::Mat &threshold,
-                                         const cv::Mat &distances) {
+                                         const cv::Mat &distances)
+{
   cv::Size dim = init.size();
   cv::Mat suppression_mask = cv::Mat(dim, CV_8UC1, 255);
 
   std::vector<Circle> ret;
 
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++)
+  {
 
     // find highest point
     double min, max;

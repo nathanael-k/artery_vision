@@ -27,16 +27,16 @@ int main(int argc, char **argv)
   cv::namedWindow(window_detail, cv::WINDOW_AUTOSIZE);
 
   // Test scenarios:
-  //ArteryReplicator replicator("../data/renders/easy_flow_3/", window_A, window_B, window_detail);
-  //ArteryReplicator replicator("../data/renders/flow_1/", window_A, window_B, window_detail);
+  //ArteryReplicator replicator("../../../data/renders/easy_flow_3/", window_A, window_B, window_detail);
+  //ArteryReplicator replicator("../../../data/renders/flow_1/", window_A, window_B, window_detail);
 
   // 3 phantom models:
-  //ArteryReplicator replicator("../data/renders/heart/", window_A, window_B, window_detail);
-  //ArteryReplicator replicator("../data/renders/aorta_to_brain/", window_A, window_B, window_detail);
-  ArteryReplicator replicator("../../../data/renders/real_brain/", window_A, window_B, window_detail);
-  
+  //ArteryReplicator replicator("../../../data/renders/heart/", window_A, window_B, window_detail);
+  ArteryReplicator replicator("../../../data/renders/aorta_to_brain/", window_A, window_B, window_detail);
+  //ArteryReplicator replicator("../../../data/renders/real_brain/", window_A, window_B, window_detail);
+
   // Real x-ray:
-  //ArteryReplicator replicator("../data/real/png/", window_A, window_B, window_detail);
+  //ArteryReplicator replicator("../../../data/real/png/", window_A, window_B, window_detail);
 
   // UI
   cv::createTrackbar("Frame:", "", &replicator.camera.current_displayed_frame,

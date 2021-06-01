@@ -277,7 +277,10 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     size_t next_index;
 
     // if we already have a ball in the graph at the same place, connect them
-    double connect_radius = is_prob_junction ? 2.0 : 1.2;
+    // CONNECTION RADIUS must be choosen small enough to avoid spurious balls
+    double connect_radius = is_prob_junction ? 1.6 : 0.9; // rendered
+    // double connect_radius = is_prob_junction ? 2.0 : 1.2; // printed
+
     if (graph.find_closest_ball(next_ball.center_m, node.index, next_index) <
         connect_radius)
     {
