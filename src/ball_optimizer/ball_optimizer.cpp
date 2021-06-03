@@ -57,7 +57,7 @@ void BallOptimizer::step(const double dx, const uint8_t frame_index)
   CircleGradient gradB = get_gradient(circleB, 1, frame_index);
   // cv::waitKey(0);
 
-  std::cout << gradA.quality << "    " << gradB.quality << "\n";
+  // std::cout << gradA.quality << "    " << gradB.quality << "\n";
 
   circleA.apply_gradient(gradA, 1);
   circleB.apply_gradient(gradB, 1);
@@ -102,8 +102,8 @@ void BallOptimizer::step_junction(const double dx, const uint8_t frame_index)
   Eigen::Vector2d gap_A = report_smallest_gap_direction(false, circleA, factor_A, frame_index);
   Eigen::Vector2d gap_B = report_smallest_gap_direction(true, circleB, factor_B, frame_index);
 
-  std::cout << "optimizing junction - radii: " << factor_A << " / " << factor_B
-            << std::endl;
+  // std::cout << "optimizing junction - radii: " << factor_A << " / " << factor_B
+  //          << std::endl;
 
   circleA.location_px += 2 * gap_A;
   circleB.location_px += 2 * gap_B;

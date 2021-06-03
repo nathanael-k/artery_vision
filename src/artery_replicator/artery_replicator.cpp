@@ -20,8 +20,8 @@ ArteryReplicator::ArteryReplicator(const std::string &data_path,
   if (camera.image_data_A.source.empty() ||
       camera.image_data_B.source.empty())
   {
-    std::cout << "Could not open or find the image!\n"
-              << std::endl;
+    //std::cout << "Could not open or find the image!\n"
+    //         << std::endl;
     assert(false);
   }
 }
@@ -64,8 +64,8 @@ arteryGraph &ArteryReplicator::build_graph()
     // skip build
     //}
 
-    std::cout << "--- New Frame with " << end_balls.size()
-              << " new ends to explore.\n";
+    //std::cout << "--- New Frame with " << end_balls.size()
+    //       << " new ends to explore.\n";
 
     for (Ball *ball : end_balls)
     {
@@ -169,7 +169,7 @@ std::list<Ball> ArteryReplicator::generate_init_balls(size_t frame,
   auto distances =
       cross_correlate_circles(init_Circles_A, init_Circles_B, camera);
 
-  std::cout << distances << std::endl;
+  //std::cout << distances << std::endl;
 
   // based on cross correlation, build balls (this list owns the Balls)
   return init_balls(init_Circles_A, init_Circles_B, camera);
@@ -223,7 +223,7 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     {
       optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
       restart_indices.emplace_back(node_idx);
-      std::cout << "Ending line at new found ending ..." << std::endl;
+      //std::cout << "Ending line at new found ending ..." << std::endl;
       return;
     }
 
@@ -232,7 +232,7 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     {
       optimizer.optimize_constrained(10, frame, old_node.ball, 1.5);
       restart_indices.emplace_back(node_idx);
-      std::cout << "Ending line at new found strange position ..." << std::endl;
+      //std::cout << "Ending line at new found strange position ..." << std::endl;
       return;
     }
 
@@ -243,7 +243,7 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     {
 
       // just optimize this one, then leave
-      std::cout << "Ending line at new found junction ..." << std::endl;
+      //std::cout << "Ending line at new found junction ..." << std::endl;
 
       optimizer.optimize_junction(10, frame);
       return;
@@ -256,7 +256,7 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
     // add that easy line ball:
 
     optimizer.optimize_constrained(50, frame, old_node.ball, 1.5);
-    std::cout << "Continuing line ..." << std::endl;
+    //std::cout << "Continuing line ..." << std::endl;
 
     // go for the next ball
     auto circles_A = optimizer.report_adjacent_circles(false, 1.5, frame);
@@ -290,14 +290,14 @@ void ArteryReplicator::explore_node(size_t node_idx, size_t old_node_idx,
       node.explored_index = frame;
       graph.all_nodes[next_index].explored_index = frame;
 
-      std::cout << "Connecting already found nodes " << node.index << " and "
-                << next_index << '\n';
+      //std::cout << "Connecting already found nodes " << node.index << " and "
+      //        << next_index << '\n';
       return;
     }
     if (next_ball.confidence < 2)
     {
-      std::cout << "Rejecting next ball due to confidence of " << next_ball.confidence << " after idx "
-                << node_idx << '\n';
+      //std::cout << "Rejecting next ball due to confidence of " << next_ball.confidence << " after idx "
+      //         << node_idx << '\n';
       return;
     }
 
@@ -320,7 +320,7 @@ void ArteryReplicator::start_at_end_ball(Ball &ball, const size_t frame_index)
   if (!graph.all_nodes.empty() &&
       graph.find_closest_ball(ball.center_m, index) < 1)
   {
-    std::cout << "End Ball was already part of the graph.\n";
+    //std::cout << "End Ball was already part of the graph.\n";
     return;
   }
 
@@ -396,21 +396,21 @@ bool ArteryReplicator::restart_at(const size_t node_idx,
   Ball next_ball = triangulate_ball(next_circle_A, next_circle_B, camera);
   if (next_ball.confidence < 1)
   {
-    std::cout << "Next ball after restart had too high discrepancy.\n";
+    //std::cout << "Next ball after restart had too high discrepancy.\n";
     return false;
   }
 
   if (next_circle_A.radius_px < 0.5 * last_circle_A.radius_px ||
       next_circle_B.radius_px < 0.5 * last_circle_B.radius_px)
   {
-    std::cout << "Next ball after restart had too small circles.\n";
+    //std::cout << "Next ball after restart had too small circles.\n";
     return false;
   }
 
   if (next_circle_A.radius_px > 2 * last_circle_A.radius_px ||
       next_circle_B.radius_px > 2 * last_circle_B.radius_px)
   {
-    std::cout << "Next ball after restart had too big circles.\n";
+    //std::cout << "Next ball after restart had too big circles.\n";
     return false;
   }
 
@@ -428,8 +428,8 @@ bool ArteryReplicator::restart_at(const size_t node_idx,
     node.explored_index = frame_index;
     graph.all_nodes[next_index].explored_index = frame_index;
 
-    std::cout << "Connecting already found nodes (at restart) " << node.index
-              << " and " << next_index << '\n';
+    //std::cout << "Connecting already found nodes (at restart) " << node.index
+    //         << " and " << next_index << '\n';
     return false;
   }
 
@@ -437,7 +437,7 @@ bool ArteryReplicator::restart_at(const size_t node_idx,
   // references to nodes get invalidated here!
   size_t next_node_idx = graph.add_ball_at(next_ball, node_idx);
 
-  std::cout << "Restart from node " << node_idx << "added nodes.\n";
+  //std::cout << "Restart from node " << node_idx << "added nodes.\n";
   explore_node(next_node_idx, node_idx, frame_index);
 
   return false;
